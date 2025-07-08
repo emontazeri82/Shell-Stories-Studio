@@ -1,8 +1,22 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  transition: all;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
 }
 
 @theme inline {
@@ -24,3 +38,51 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes waveScroll {
+  0% {
+    background-position-x: 0;
+  }
+  100% {
+    background-position-x: -1600px;
+  }
+}
+
+.bg-wave-animate {
+  animation: waveScroll 12s linear infinite;
+}
+img {
+  image-rendering: pixelated;
+  display: block;
+}
+@keyframes expandWindow {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInAndMove {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+.shell_animation-bg {
+  background-color: transparent !important;
+}
+
+/* global CSS or Tailwind config */
+#favorite-image {
+  scroll-margin-top: 20vh; /* adjust as needed */
+}
+
+
