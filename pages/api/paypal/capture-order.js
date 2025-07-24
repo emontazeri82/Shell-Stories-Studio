@@ -10,7 +10,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { orderID, cartItems, sessionId, total } = req.body;
+  const {
+    orderID,
+    cartItems,
+    sessionId,
+    total,
+    deliveryMethod,
+    email: formEmail,      // 👈 from your CustomerInfoForm
+    phone: formPhone       // 👈 from your CustomerInfoForm
+    } = req.body;
 
   if (!orderID || !Array.isArray(cartItems) || !sessionId || typeof total !== 'number') {
     return res.status(400).json({ error: 'Missing or invalid required order details' });
@@ -28,9 +36,13 @@ export default async function handler(req, res) {
     const payer = order.payer ?? {};
     const shipping = order.purchase_units?.[0]?.shipping ?? {};
 
-    const email = payer.email_address || 'not_provided@example.com';
+    /*const email = payer.email_address || 'not_provided@example.com';
     const customerName = [payer.name?.given_name, payer.name?.surname].filter(Boolean).join(' ');
-    const phone = payer.phone?.phone_number?.national_number || '';
+    const phone = payer.phone?.phone_number?.national_number || '';*/
+    const email = formEmail || payer.email_address || 'not_provided@example.com';
+    const customerName = [payer.name?.given_name, payer.name?.surname].filter(Boolean).join(' ') || 'Guest';
+    const phone = formPhone || payer.phone?.phone_number?.national_number || '';
+
     const addressParts = [
       shipping.address?.address_line_1,
       shipping.address?.admin_area_2,
@@ -48,6 +60,7 @@ export default async function handler(req, res) {
       email,
       customerName,
       phone,
+      delivery_method: deliveryMethod,
       shippingAddress,
       billingAddress: shippingAddress
     });

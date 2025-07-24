@@ -1,6 +1,5 @@
 // pages/api/paypal/create-order.js
 import paypal from '@paypal/checkout-server-sdk';
-import { getPayPalClient } from '@/lib/paypalClient';
 
 // Setup PayPal environment and client
 const environment = new paypal.core.SandboxEnvironment(
@@ -15,7 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { total, items, sessionId } = req.body;
+    const { total, items, sessionId, deliveryMethod = "standard" } = req.body;
     console.log("🛒 sessionId in CheckoutWithPayPal:", sessionId);
 
 
@@ -42,6 +41,9 @@ export default async function handler(req, res) {
       itemsCount: items.length,
       sessionId: sessionId || 'N/A'
     });
+
+    const shippingPreference =
+      deliveryMethod === "pickup" ? "NO_SHIPPING" : "GET_FROM_FILE";
 
     // Create PayPal order request
     const request = new paypal.orders.OrdersCreateRequest();
@@ -78,7 +80,11 @@ export default async function handler(req, res) {
             category: 'PHYSICAL_GOODS'
           }))
         }
-      ]
+      ],
+      application_context: {
+        shipping_preference: shippingPreference,
+        user_action: "PAY_NOW"
+      }
     });
 
     const order = await client.execute(request);

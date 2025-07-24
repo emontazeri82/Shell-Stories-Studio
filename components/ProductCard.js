@@ -85,7 +85,7 @@ export default function ProductModal({ product, onClose, onAddToCart }) {
                                 />
                             </div>
 
-                            <div>
+                            <div className="font-poppins"> 
                                 <h1 id="product-title" className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{product.name}</h1>
                                 <p className="text-xl text-indigo-600 font-semibold mb-4">
                                     ${product.price.toFixed(2)}

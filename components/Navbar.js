@@ -8,7 +8,7 @@ import { useState, useRef } from "react";
 import MiniCartPreview from "./MiniCartPreview";
 import ThemeToggle from "./ThemeToggle";
 import MobileMenuToggle from "./MobileMenuToggle";
-
+import MobileMenu from "./MobileMenu";
 export default function Navbar({ onCartClick }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const dispatch = useDispatch();
@@ -38,7 +38,7 @@ export default function Navbar({ onCartClick }) {
                         className="rounded-full border shadow hover:scale-105 transition"
                     />
 
-                    <span className="text-indigo-600 font-bold tracking-wide leading-tight">
+                    <span className="text-indigo-600 font-playfair font-bold tracking-wide leading-tight">
                         <span className="block text-xl sm:text-2xl">Shell Stories</span>
                         <span className="block text-sm sm:text-2xl">Studio</span>
                     </span>
@@ -47,18 +47,18 @@ export default function Navbar({ onCartClick }) {
             <MobileMenuToggle isOpen={isMobileMenuOpen} toggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden" />
                 <nav className="hidden md:flex ml-auto flex items-center gap-2 md:gap-4">
                     <ThemeToggle /> {/* 👈 Move this here, before nav links */}
-                    <Link href="/" className="flex items-center gap-1 text-gray-700 hover:text-indigo-600">
+                    <Link href="/" className="font-poppins flex items-center gap-1 text-gray-700 hover:text-indigo-600">
                         <HomeIcon className="w-5 h-5" />
                         Home
                     </Link>
-                    <Link href="/products" className="flex items-center gap-1 text-gray-700 hover:text-indigo-600">
+                    <Link href="/products" className="font-poppins flex items-center gap-1 text-gray-700 hover:text-indigo-600">
                         🐚Products
                     </Link>
-                    <Link href="/about" className="flex items-center gap-1 text-gray-700 hover:text-indigo-600">
+                    <Link href="/about" className="font-poppins flex items-center gap-1 text-gray-700 hover:text-indigo-600">
                         <InformationCircleIcon className="w-5 h-5" />
                         About
                     </Link>
-                    <Link href="/contact" className="flex items-center gap-1 text-gray-700 hover:text-indigo-600">
+                    <Link href="/contact" className="font-poppins flex items-center gap-1 text-gray-700 hover:text-indigo-600">
                         <PhoneIcon className="w-5 h-5" />
                         Contact
                     </Link>
@@ -74,11 +74,11 @@ export default function Navbar({ onCartClick }) {
                         >
                             <div className="relative flex items-center gap-1">
                                 <ShoppingCartIcon className="w-5 h-5" />
-                                <span>Cart</span>
+                                <span className="font-poppins">Cart</span>
                             </div>
 
                             {totalQuantity > 0 && (
-                                <span className="ml-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                <span className="font-inter ml-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                                     {totalQuantity}
                                 </span>
                             )}
@@ -100,24 +100,13 @@ export default function Navbar({ onCartClick }) {
                     </div>
                 </nav >
                 {/* Mobile Dropdown Navigation */}
-                {isMobileMenuOpen && (
-                    <div className="absolute top-full left-0 w-full bg-white dark:bg-gray-900 mt-2 px-6 py-4 flex flex-col gap-3 md:hidden shadow-lg z-50">
-                        <ThemeToggle />
-                        <Link href="/" className="block text-gray-700 hover:text-indigo-600">🏠 Home</Link>
-                        <Link href="/products" className="block text-gray-700 hover:text-indigo-600">🐚 Products</Link>
-                        <Link href="/about" className="block text-gray-700 hover:text-indigo-600">ℹ️ About</Link>
-                        <Link href="/contact" className="block text-gray-700 hover:text-indigo-600">📞 Contact</Link>
-                        <button
-                            onClick={() => {
-                                dispatch(openCart());
-                                setIsMobileMenuOpen(false);
-                            }}
-                            className="block w-full text-left text-gray-700 hover:text-indigo-600"
-                        >
-                            🛒 Cart ({totalQuantity})
-                        </button>
-                    </div>
-                )}
+                
+                <MobileMenu 
+                isOpen={isMobileMenuOpen}
+                setIsOpen={setIsMobileMenuOpen}
+                totalQuantity={totalQuantity}
+                />
+            
             </div>
     );
 }

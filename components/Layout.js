@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import AnimatedWaveHeader from "@/components/AnimatedWaveHeader";
 import CartPanel from "./CartPanel";
 import { useSelector, useDispatch } from "react-redux";
-import { closeCart } from "@/redux/slices/cartSlice";
+import { openCart, closeCart } from "@/redux/slices/cartSlice";
 
 export default function Layout({ title = "Shell Stories Studio", children }) {
   const isCartOpen = useSelector((state) => state.cart.isCartOpen);
@@ -20,8 +20,8 @@ export default function Layout({ title = "Shell Stories Studio", children }) {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="relative flex flex-col min-h-screen font-sans bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
-        <Navbar onCartClick={() => setIsCartOpen(true)} />
+      <div className="relative flex flex-col min-h-screen font-poppins bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+        <Navbar onCartClick={() => dispatch(openCart())} />
         <CartPanel isOpen={isCartOpen} onClose={() => dispatch(closeCart())} />   {/* fixed at the top */}
         <AnimatedWaveHeader /> {/* under navbar */}
 

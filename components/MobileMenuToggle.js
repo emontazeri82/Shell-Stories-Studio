@@ -19,11 +19,4 @@ export default function MobileMenuToggle({ isOpen, toggle }) {
   );
 }
 
-// Usage inside Navbar.js
 
-// import MobileMenuToggle from "./MobileMenuToggle"; // 👈 Top of file
-
-// const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-// Then inside logo block:
-{/* <MobileMenuToggle isOpen={isMobileMenuOpen} toggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} /> */}

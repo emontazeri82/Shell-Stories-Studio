@@ -7,7 +7,7 @@ import { addToCart } from "@/redux/slices/cartSlice";
 import { useRouter } from "next/router";
 import Layout from "@/components/Layout";
 import ProductModal from "@/components/ProductCard";
-import ProductFavorite from "@/components/ProductFavorite";
+import ProductFavorite from "@/components/product-card/ProductFavorite";
 import { toast } from "react-hot-toast";
 import { getProductsServerSideProps } from "@/lib/static-data/getServerSideProps";
 import { useScrollToHighlightedProduct } from "@/hooks/useScrollToHighlightedProduct";
@@ -49,7 +49,7 @@ export default function ProductsPage({ products }) {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-center mb-8">
+        <h1 className="text-3xl font-bold text-center mb-8 font-poppins">
           Our Shell Collection
         </h1>
 

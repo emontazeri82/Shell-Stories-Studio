@@ -45,11 +45,11 @@ export default function CartPanel({ isOpen, onClose }) {
           }}
         >
           <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-            <h2 className="text-xl font-bold">Your Cart</h2>
+            <h2 className="text-xl font-bold font-title">Your Cart</h2>
             <button 
                 ref = {closeBtnRef}
                 onClick={onClose} 
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-300 drak:hover:text-white text-2xl"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-300 drak:hover:text-white text-2xl font-poppins"
                 aria-label="Close Cart"
             >
                 &times;
@@ -60,7 +60,7 @@ export default function CartPanel({ isOpen, onClose }) {
             {/* Cart Items */}
             <div className="flex-1 overflow-y-auto px-4 pt-4">
                 {items.length === 0 ? (
-                    <p className="text-center text-gray-500 dark:text-gray-400">Your cart is empty.</p>
+                    <p className="text-center text-gray-500 dark:text-gray-400 font-inter">Your cart is empty.</p>
                 ): (
                     items.map((item) => (
                         <CartItem key={item.id} item={item} />

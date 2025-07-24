@@ -1,6 +1,6 @@
 function Error({ statusCode }) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen text-white bg-black text-center">
+      <div className="flex flex-col items-center justify-center h-screen text-white bg-black text-center font-poppins">
         <h1 className="text-5xl font-bold">
           {statusCode ? `Error ${statusCode}` : "An error occurred"}
         </h1>

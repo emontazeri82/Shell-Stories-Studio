@@ -8,9 +8,13 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Merriweather', 'ui-sans-serif', 'system-ui'],
-        title: ['Josefin Sans', 'sans-serif'],
-      },
+        sans: ['var(--font-merriweather)', 'ui-sans-serif', 'system-ui'],
+        title: ['var(--font-josefin)', 'sans-serif'],
+        poppins: ['var(--font-poppins)', 'sans-serif'],
+        inter: ['var(--font-inter)', 'sans-serif'],
+        playfair: ['var(--font-playfair)', 'serif'],
+        quicksand: ['var(--font-quicksand)', 'sans-serif'],
+      }      
     },
   },
   plugins: [],

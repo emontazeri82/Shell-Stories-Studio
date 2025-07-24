@@ -14,7 +14,7 @@ export default function CartItem({ item }) {
   const dispatch = useDispatch();
 
   return (
-    <div className="flex items-start gap-4 py-4 border-b border-gray-200 dark:border-gray-700">
+    <div className="flex items-start gap-4 py-4 border-b border-gray-200 dark:border-gray-700 font-inter">
       <div className="w-24 h-24 relative rounded overflow-hidden">
         <Image
           src={item.image_url}
@@ -27,7 +27,7 @@ export default function CartItem({ item }) {
       <div className="flex-1">
         <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-title">
               {item.name}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">${item.price.toFixed(2)}</p>

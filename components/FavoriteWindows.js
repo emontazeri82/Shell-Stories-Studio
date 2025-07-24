@@ -8,6 +8,7 @@ export default function FavoriteWindows() {
     const { favoriteImage } = getImagePaths(id);
     return { productId: id, src: favoriteImage };
   });
+
   return (
     <div className="relative w-0 h-0 z-30">
       {favoriteItems.map((item, index) => {
@@ -23,7 +24,6 @@ export default function FavoriteWindows() {
               transformOrigin: "center",
             }}
           >
-
             <Link
               href={`/products#favorite-${item.productId}`}
               scroll={true}
@@ -37,15 +37,13 @@ export default function FavoriteWindows() {
                 alt={`Favorite product ${item.productId}`}
               />
             </Link>
-
-
-
-          </div>
+          </div> // ✅ Properly closed this div here
         );
       })}
     </div>
   );
 }
+
 
 
 

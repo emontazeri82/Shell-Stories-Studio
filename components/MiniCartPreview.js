@@ -8,7 +8,7 @@ export default function MiniCartPreview({ onCartClick }) {
     const items = useSelector((state) => state.cart.items);
 
     return (
-        <div className="w-64 bg-white border shadow-lg rounded-lg p-4 space-y-2 relative z-50">
+        <div className="w-64 bg-white border shadow-lg rounded-lg p-4 space-y-2 relative z-50 font-poppins">
             <div className="absolute -top-2 right-6 w-4 h-4 bg-white rotate-45 shadow -z-10" />
 
                 {items.length === 0 ? (
@@ -32,7 +32,7 @@ export default function MiniCartPreview({ onCartClick }) {
                     ))}
                     <button
                         onClick={onCartClick}
-                        className="text-indigo-600 text-sm block mt-2 hover:underline"
+                        className="text-indigo-600 text-sm block mt-2 hover:underline font-semibold"
                     >
                         View Full Cart →
                     </button>

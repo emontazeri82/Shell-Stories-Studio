@@ -27,7 +27,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="max-w-sm mx-auto mt-20 p-6 border rounded shadow">
+    <div className="max-w-sm mx-auto mt-20 p-6 border rounded shadow font-poppins">
       <h1 className="text-xl font-bold mb-4 text-center">🔐 Admin Login</h1>
 
       <input

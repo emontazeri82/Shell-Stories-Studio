@@ -8,14 +8,14 @@ import axios from "axios";
 import { clearCart } from '@/redux/slices/cartSlice';
 import { useDispatch } from "react-redux";
 
-const CheckoutWithPayPal = ({ totalAmount, cartItems, sessionId }) => {
+const CheckoutWithPayPal = ({ totalAmount, cartItems, sessionId, email, phone, deliveryMethod }) => {
   const router = useRouter();
   const dispatch = useDispatch();
 
   // ✅ Prevent rendering if cart is empty
   if (!cartItems || cartItems.length === 0) {
     return (
-      <p className="text-red-500 text-center">
+      <p className="text-red-500 text-center font-semibold text-base font-sans">
         🛒 Your cart is empty. Please add items before checking out.
       </p>
     );
@@ -29,6 +29,7 @@ const CheckoutWithPayPal = ({ totalAmount, cartItems, sessionId }) => {
         total: totalAmount,
         items: cartItems,
         sessionId: sessionId,
+        deliveryMethod,
       });
 
       const orderId = res?.data?.id;
@@ -57,6 +58,9 @@ const CheckoutWithPayPal = ({ totalAmount, cartItems, sessionId }) => {
         cartItems: cartItems,
         sessionId,
         total: totalAmount,
+        email,
+        phone,
+        deliveryMethod
       });
 
       if (res?.data?.success) {

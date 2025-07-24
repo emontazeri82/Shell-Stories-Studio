@@ -8,7 +8,7 @@ const ReactPlayer = dynamic(() => import("react-player"), { ssr: false });
 export default function Background() {
   try {
     return (
-      <div className="relative w-full h-[80vh] overflow-hidden z-0 pointer-events-none">
+      <div className="w-full h-full">
         <ReactPlayer
           url="/assets/videos/underwater.mp4"
           playing

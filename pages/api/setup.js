@@ -18,8 +18,11 @@ async function createTables(db) {
       price REAL NOT NULL CHECK (price >= 0),
       stock INTEGER NOT NULL CHECK (stock >= 0),
       image_url TEXT,
+      image_public_id TEXT,
       category TEXT DEFAULT 'decor',
-      is_active INTEGER DEFAULT 1 CHECK (is_active IN (0, 1))
+      is_active INTEGER DEFAULT 1 CHECK (is_active IN (0, 1)),
+      is_favorite INTEGER DEFAULT 0 CHECK (is_favorite IN (0, 1)), -- 0 = not favorite, 1 = favorite
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS cart_items (
@@ -45,6 +48,7 @@ async function createTables(db) {
       shipping_address TEXT NOT NULL,
       billing_address TEXT NOT NULL,
       payment_method TEXT DEFAULT 'Card',
+      delivery_method TEXT DEFAULT 'standard',
       purchase_status TEXT DEFAULT 'Processing',
       delivered_status TEXT DEFAULT 'Not Delivered',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
