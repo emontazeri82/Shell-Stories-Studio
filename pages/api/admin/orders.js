@@ -1,9 +1,10 @@
 // pages/api/admin/orders.js
+import path from 'path';
 import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
-import path from 'path';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]'; // adjust path if necessary
+
+import { sendErrorResponse, sendSuccessResponse } from '@/lib/api'; // ✅ Consistent API response format
+import { createAdminHandler } from '@/lib/middleware/createAdminHandler';
 
 const dbPath = path.join(process.cwd(), 'data', 'shells_shop.db');
 
@@ -11,17 +12,12 @@ async function openDB() {
   return open({ filename: dbPath, driver: sqlite3.Database });
 }
 
-export default async function handler(req, res) {
-  // Protect route with admin session
-  const session = await getServerSession(req, res, authOptions);
-  const adminEmail = process.env.ADMIN_EMAIL;
 
-  if (!session || session.user.email !== adminEmail) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+// 👇 Create handler with built-in rate limit + auth
+const handler = createAdminHandler();
 
-  if (req.method !== 'GET') return res.status(405).end();
-
+// 📦 GET all orders (admin only)
+handler.get(async (req, res) => {
   try {
     const db = await openDB();
     const orders = await db.all(`
@@ -31,11 +27,14 @@ export default async function handler(req, res) {
       ORDER BY o.created_at DESC
     `);
 
-    res.status(200).json(orders);
+    return sendSuccessResponse(res, 200, 'Orders fetched successfully', { orders });
   } catch (err) {
-    console.error('DB error:', err);
-    res.status(500).json({ error: 'Failed to fetch orders' });
+    console.error('❌ Failed to fetch orders:', err);
+    return sendErrorResponse(res, 500, 'Failed to fetch orders');
   }
-}
+});
+
+export default handler;
+
 
 

@@ -8,25 +8,36 @@ import AdminOrdersPanel from '@/components/OrdersPanel/AdminOrdersPanel';
 export async function getServerSideProps(context) {
     const session = await getServerSession(context.req, context.res, authOptions);
 
-    if (!session) {
+    // 🔐 Protect admin-only route
+    if (!session || session.user?.role !== "admin") {
+        console.warn("⛔ Unauthorized access attempt to /admin/admin_inventory");
         return {
-            redirect: { destination: '/admin/login', permanent: false }
+            redirect: {
+                destination: "/admin/login",
+                permanent: false,
+            },
         };
     }
 
-    // Remove undefined values (e.g. image)
+    // ✅ Clean session object for safety (e.g., nullify undefined fields)
     const safeSession = {
         ...session,
         user: {
-            ...session.user,
+            id: session.user.id || null,
+            email: session.user.email || null,
+            name: session.user.name || null,
+            role: session.user.role || "user",
             image: session.user.image ?? null,
-        }
+        },
     };
 
     return {
-        props: { session: safeSession }
+        props: {
+            session: safeSession,
+        },
     };
 }
+
 
 
 

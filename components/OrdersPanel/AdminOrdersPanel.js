@@ -4,6 +4,8 @@ import axios from 'axios';
 import SearchBar from './SearchBar';
 import OrderTable from './OrderTable';
 import OrderCard from './OrderCard';
+import { motion, AnimatePresence } from 'framer-motion';
+
 
 export default function AdminOrdersPanel() {
     const [orders, setOrders] = useState([]);
@@ -20,8 +22,14 @@ export default function AdminOrdersPanel() {
         const fetchOrders = async () => {
             try {
                 const res = await axios.get('/api/admin/orders');
-                setOrders(res.data);
-                setFilteredOrders(res.data);
+                console.log('✅ Orders response:', res.data);
+
+                const data = res.data;
+                const orderList = Array.isArray(data?.data?.orders) ? data.data.orders : [];
+
+
+                setOrders(orderList);
+                setFilteredOrders(orderList);
             } catch (err) {
                 console.error('Failed to fetch orders:', err);
             } finally {
@@ -56,24 +64,34 @@ export default function AdminOrdersPanel() {
                 <SearchBar search={search} setSearch={setSearch} />
             </div>
 
-            {filteredOrders.length === 0 ? (
-                <p>No matching orders found.</p>
-            ) : (
+            {Array.isArray(filteredOrders) && filteredOrders.length > 0 ? (
                 <>
-                    {/* Card layout for mobile */}
                     <div className="grid gap-4 lg:hidden">
-                        {filteredOrders.map((order) => (
-                            <OrderCard key={order.id} order={order} />
-                        ))}
+                        <AnimatePresence mode="popLayout">
+                            {filteredOrders.map((order) => (
+                                <motion.div
+                                    key={order.id}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <OrderCard order={order} />
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+
                     </div>
 
-                    {/* Table layout for desktop */}
                     <OrderTable
                         orders={filteredOrders}
                         toggleExpand={toggleExpand}
                         expandedRowId={expandedRowId}
                     />
                 </>
+            ) : (
+                <p>No matching orders found.</p>
             )}
         </div>
     );

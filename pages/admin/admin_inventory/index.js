@@ -1,4 +1,4 @@
-// pages/admin/admin-inventory/index.js
+// pages/admin/admin_inventory/index.js
 import { useState } from 'react';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/pages/api/auth/[...nextauth]';
@@ -9,7 +9,7 @@ import { useRouter } from 'next/router';
 export async function getServerSideProps(context) {
   const session = await getServerSession(context.req, context.res, authOptions);
 
-  if (!session) {
+  if (!session || session.user.role !== 'admin') {
     return {
       redirect: { destination: '/admin/login', permanent: false }
     };

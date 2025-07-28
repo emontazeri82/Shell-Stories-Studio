@@ -32,7 +32,10 @@ const ProductForm = ({ productId }) => {
           const data = await res.json();
           if (data?.product) {
             setProduct(data.product);
-            reset(data.product);
+            reset({
+              ...data.product,
+              image_url: data.product.image_url || '', //✅ ensures consistent field name
+          });
             setImageUrl(data.product.image_url || '');
           }
         } catch (err) {
@@ -87,12 +90,16 @@ const ProductForm = ({ productId }) => {
         return;
       }
 
-      formData.imageUrl = imageUrl;
+      // ✅ Correct field name for backend (snake_case)
+      const formattedData = {
+        ...formData,
+        image_url: imageUrl, // ✅ matches DB field
+      };
 
       if (productId) {
-        await updateProductById(productId, formData);
+        await updateProductById(productId, formattedData);
       } else {
-        await createProduct(formData);
+        await createProduct(formattedData);
       }
 
       alert('Product saved successfully');

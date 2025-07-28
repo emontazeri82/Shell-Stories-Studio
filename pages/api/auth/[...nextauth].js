@@ -2,6 +2,7 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { verifyPassword } from '@/utils/password';
+import { rateLimiter } from '@/lib/middleware/rateLimiter';
 
 const adminEmail = process.env.ADMIN_EMAIL;
 const hashedPassword = process.env.HASHED_ADMIN_PASSWORD; // ✅ Use from .env only
@@ -35,7 +36,7 @@ export const authOptions = {
 
         try {
           //console.log("✅ Loaded HASHED_ADMIN_PASSWORD:", JSON.stringify(hashedPassword));
- 
+
           if (!hashedPassword || !hashedPassword.startsWith('$argon2id$')) {
             console.error("❌ Invalid HASHED_ADMIN_PASSWORD format in .env");
             return null;
@@ -50,6 +51,7 @@ export const authOptions = {
               id: 1,
               name: 'Admin',
               email: inputEmail,
+              role: 'admin',
               image: null, // 👈 Required to avoid serialization issues in Next.js
             };
           }
@@ -69,23 +71,52 @@ export const authOptions = {
     signIn: '/admin/login',
   },
   callbacks: {
-    async jwt({token, user }) {
-        if (user) {
-            token.email = user.email;
-            token.name = user.name;
-        }
-        return token;
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
+        token.role = user.role || 'admin';
+      }
+      return token;
     },
     async session({ session, token }) {
-        session.user.email = token.email;
-        session.user.name = token.name;
-        session.user.iamge = null;
-        return session;
-    }
+      // ✅ Always check that session.user exists before assigning
+      if (!session.user) {
+        session.user = {};
+      }
+
+      session.user.id = token.id;
+      session.user.email = token.email;
+      session.user.name = token.name;
+      session.user.role = token.role || 'admin';
+      session.user.image = null;
+
+      return session;
+    },
+  },
+  // Optional logger for debugging auth issues
+  logger: {
+    error(code, metadata) {
+      console.error("❌ NextAuth error:", code, metadata);
+    },
+    warn(code) {
+      console.warn("⚠️ NextAuth warning:", code);
+    },
+    debug(code, metadata) {
+      console.debug("🐞 NextAuth debug:", code, metadata);
+    },
   },
 };
 
-export default NextAuth(authOptions);
+export default async function handler(req, res) {
+  // ✅ Apply rateLimiter ONLY to POST (login attempts)
+  if (req.method === 'POST') {
+    await rateLimiter(req, res, () => {}, { limit: 10, window: 60 });
+  }
+
+  return await NextAuth(req, res, authOptions);
+}
 
 
 

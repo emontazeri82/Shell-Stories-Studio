@@ -2,6 +2,7 @@
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const path = require('path');
+import argon2 from 'argon2';
 
 const dbPath = path.join(process.cwd(), 'data', 'shells_shop.db');
 
@@ -10,13 +11,13 @@ async function openDB() {
 }
 
 async function createTables(db) {
-  await db.exec(`
+  await db.run(`
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
       description TEXT,
-      price REAL NOT NULL CHECK (price >= 0),
-      stock INTEGER NOT NULL CHECK (stock >= 0),
+      price REAL NOT NULL DEFAULT 0 CHECK (price >= 0),
+      stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
       image_url TEXT,
       image_public_id TEXT,
       category TEXT DEFAULT 'decor',
@@ -38,7 +39,7 @@ async function createTables(db) {
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       customer_id INTEGER,
-      session_id TEXT,
+      session_id TEXT NOT NULL,
       paypal_order_id TEXT,
       email TEXT,
       customer_name TEXT,
@@ -74,13 +75,31 @@ async function createTables(db) {
       delivered_at TIMESTAMP,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT,
+      password_hash TEXT,
+      role TEXT DEFAULT 'user',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 }
+async function populateRoles(db) {
+  // 🔐 Insert admin user with hashed password
+  const hashedPassword = await argon2.hash('ghazalgxz123');
+  await db.run(`
+      INSERT OR IGNORE INTO users (email, name, password_hash, role) 
+      VALUES (?, ?, ?, ?)`,
+      ['ghazal.montazeri@gmail.com', 'Ghazal', hashedPassword, 'admin']);
+      console.log('✅ Admin user inserted (if not exists)');
+}
+
 
 async function populateProducts(db) {
   try {
-    await db.exec(`
-      INSERT INTO products (name, description, price, stock, image_url, category, is_active) VALUES
+    await db.run(`
+      INSERT OR IGNORE INTO products (name, description, price, stock, image_url, category, is_active) VALUES
       ('Butterfly Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image1.jpg', 'floral', 1),
       ('Floral Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image2.jpg', 'floral', 1),
       ('Butterfly & Rose Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image3.jpg', 'rose', 1),
@@ -103,9 +122,15 @@ async function populateProducts(db) {
 }
 
 export default async function handler(req, res) {
+  // 🚫 Block access in production
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).json({ error: 'Not allowed in production' });
+  }
+  
   try {
     const db = await openDB();
     await createTables(db);
+    await populateRoles(db);
     await populateProducts(db);
     res.status(200).json({ message: 'Database setup complete' });
   } catch (err) {
