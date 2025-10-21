@@ -1,17 +1,39 @@
 // pages/api/setup.js
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
-const path = require('path');
+import path from 'path';
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
 import argon2 from 'argon2';
 
 const dbPath = path.join(process.cwd(), 'data', 'shells_shop.db');
 
 async function openDB() {
-  return open({ filename: dbPath, driver: sqlite3.Database });
+  const db = await open({ filename: dbPath, driver: sqlite3.Database });
+  await db.exec('PRAGMA foreign_keys = ON');
+  return db;
 }
 
+/* ---------- helpers to migrate safely ---------- */
+async function hasColumn(db, table, col) {
+  const rows = await db.all(`PRAGMA table_info(${table});`);
+  return rows.some(r => r.name === col);
+}
+async function ensureColumn(db, table, colDef) {
+  const name = colDef.trim().split(/\s+/)[0];
+  if (!(await hasColumn(db, table, name))) {
+    await db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`);
+  }
+}
+async function ensureIndex(db, name, sql) {
+  // Use IF NOT EXISTS in SQL; wrap in try/catch so re-runs don't explode
+  try { await db.exec(sql); } catch (e) {
+    console.warn(`⚠️ Index ${name} skipped:`, e?.message || e);
+  }
+}
+
+/* ---------- create + migrate schema ---------- */
 async function createTables(db) {
-  await db.run(`
+  // products (kept compatible with your app)
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
@@ -21,11 +43,74 @@ async function createTables(db) {
       image_url TEXT,
       image_public_id TEXT,
       category TEXT DEFAULT 'decor',
-      is_active INTEGER DEFAULT 1 CHECK (is_active IN (0, 1)),
-      is_favorite INTEGER DEFAULT 0 CHECK (is_favorite IN (0, 1)), -- 0 = not favorite, 1 = favorite
+      is_active INTEGER DEFAULT 1 CHECK (is_active IN (0,1)),
+      is_favorite INTEGER DEFAULT 0 CHECK (is_favorite IN (0,1)),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+  `);
 
+  // product_media (now includes is_primary)
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS product_media (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('image','video')),
+      public_id TEXT NOT NULL,
+      secure_url TEXT NOT NULL,
+      format TEXT,
+      width INTEGER,
+      height INTEGER,
+      duration REAL,
+      alt TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_primary INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    );
+  `);
+
+  // If the table already existed (from your older setup), add any missing columns
+  await ensureColumn(db, 'product_media', 'sort_order INTEGER NOT NULL DEFAULT 0');
+  await ensureColumn(db, 'product_media', 'is_primary INTEGER NOT NULL DEFAULT 0');
+  // Optional: add these only if you need them and they’re missing
+  await ensureColumn(db, 'product_media', 'alt TEXT');
+  await ensureColumn(db, 'product_media', 'format TEXT');
+  await ensureColumn(db, 'product_media', 'width INTEGER');
+  await ensureColumn(db, 'product_media', 'height INTEGER');
+  await ensureColumn(db, 'product_media', 'duration REAL');
+
+  // Backfill NULLs (defensive; ALTER adds defaults for new rows only)
+  await db.exec(`
+    UPDATE product_media SET sort_order = COALESCE(sort_order, 0) WHERE sort_order IS NULL;
+    UPDATE product_media SET is_primary = COALESCE(is_primary, 0) WHERE is_primary IS NULL;
+  `);
+
+  // Indexes (order & lookups)
+  await ensureIndex(
+    db,
+    'idx_pm_product_id',
+    `CREATE INDEX IF NOT EXISTS idx_pm_product_id ON product_media(product_id);`
+  );
+  await ensureIndex(
+    db,
+    'idx_pm_primary_order',
+    `CREATE INDEX IF NOT EXISTS idx_pm_primary_order
+       ON product_media(product_id, is_primary, sort_order, id);`
+  );
+
+  // Optional (enforce at most one primary per product at the DB level).
+  // Commented out by default to avoid failures if you temporarily have 2 primaries.
+  // When you’re ready (no duplicates), uncomment:
+  /*
+  await ensureIndex(
+    db,
+    'uniq_pm_one_primary',
+    "CREATE UNIQUE INDEX IF NOT EXISTS uniq_pm_one_primary ON product_media(product_id) WHERE is_primary = 1;"
+  );
+  */
+
+  // other tables (unchanged)
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS cart_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       customer_id INTEGER,
@@ -75,6 +160,7 @@ async function createTables(db) {
       delivered_at TIMESTAMP,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
     );
+
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL UNIQUE,
@@ -85,16 +171,15 @@ async function createTables(db) {
     );
   `);
 }
-async function populateRoles(db) {
-  // 🔐 Insert admin user with hashed password
-  const hashedPassword = await argon2.hash('ghazalgxz123');
-  await db.run(`
-      INSERT OR IGNORE INTO users (email, name, password_hash, role) 
-      VALUES (?, ?, ?, ?)`,
-      ['ghazal.montazeri@gmail.com', 'Ghazal', hashedPassword, 'admin']);
-      console.log('✅ Admin user inserted (if not exists)');
-}
 
+async function populateRoles(db) {
+  const hashedPassword = await argon2.hash('ghazalgxz123');
+  await db.run(
+    `INSERT OR IGNORE INTO users (email, name, password_hash, role) VALUES (?, ?, ?, ?)`,
+    ['ghazal.montazeri@gmail.com', 'Ghazal', hashedPassword, 'admin']
+  );
+  console.log('✅ Admin user inserted (if not exists)');
+}
 
 async function populateProducts(db) {
   try {
@@ -126,17 +211,19 @@ export default async function handler(req, res) {
   if (process.env.NODE_ENV !== 'development') {
     return res.status(403).json({ error: 'Not allowed in production' });
   }
-  
+
   try {
     const db = await openDB();
     await createTables(db);
     await populateRoles(db);
     await populateProducts(db);
-    res.status(200).json({ message: 'Database setup complete' });
+    res.status(200).json({ message: 'Database setup complete (product_media has is_primary & indexes)' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database setup failed' });
   }
 }
+
+
 
 

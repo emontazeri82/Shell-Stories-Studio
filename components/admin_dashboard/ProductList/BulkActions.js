@@ -1,5 +1,5 @@
 // components/admin_dashboard/ProductList/BulkActions.js
-import { FaTrash, FaToggleOn, FaToggleOff, FaDollarSign, FaTags, FaStar, FaImage, FaInfoCircle } from 'react-icons/fa';
+import { FaTrash, FaToggleOn, FaToggleOff, FaDollarSign, FaTags, FaStar, FaImage, FaInfoCircle, FaBox } from 'react-icons/fa';
 import IconTooltipButton from '@/components/ui/IconTooltipButton';
 
 export default function BulkActions({ selected, onBulkDelete, onBulkActivate, onBulkUpdate }) {
@@ -37,6 +37,12 @@ export default function BulkActions({ selected, onBulkDelete, onBulkActivate, on
         label="Update Price"
         onClick={() => onBulkUpdate('price')}
       />
+      {/* Update Stock */}
+      <IconTooltipButton
+        icon={FaBox}
+        label="Update Stock"
+        onClick={() => onBulkUpdate('stock')}
+      />
 
       {/* Update Category */}
       <IconTooltipButton
@@ -69,4 +75,3 @@ export default function BulkActions({ selected, onBulkDelete, onBulkActivate, on
   );
 }
 
-  

@@ -67,6 +67,8 @@ const CheckoutWithPayPal = ({ totalAmount, cartItems, sessionId, email, phone, d
         toast.success("✅ Payment successful!");
         //clear the cart in Redux
         dispatch(clearCart());
+        localStorage.removeItem("cartItems");
+        
         router.push("/thank-you");
       } else {
         toast.error("❌ Payment failed.");

@@ -1,25 +1,20 @@
-// components/FavoriteCardInfo.js
-// components/FavoriteCardInfo.js
 "use client";
-
-import { motion } from "framer-motion";
 
 export default function FavoriteCardInfo({ product }) {
   return (
-    <motion.div
-      className="p-4 min-h-[100px] flex flex-col justify-between"
-      initial={{ opacity: 0, y: 10 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: 0.1 }}
-      viewport={{ once: true, amount: 0.1 }}
-    >
-      <h2 className="text-lg font-playfair font-semibold text-gray-800 dark:text-gray-100 line-clamp-1">
-        {product.name}
-      </h2>
-      <p className="text-inter text-indigo-600 dark:text-indigo-400 font-bold mt-2">
-        {product.price != null ? `$${product.price.toFixed(2)}` : "Price not available"}
-      </p>
-    </motion.div>
+    <div className="p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-semibold line-clamp-1">{product.name}</h3>
+        <span className="text-sm font-medium text-indigo-600">
+          ${Number(product.price || 0).toFixed(2)}
+        </span>
+      </div>
+      {product.description ? (
+        <p className="text-xs text-zinc-500 mt-1 line-clamp-2">
+          {product.description}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

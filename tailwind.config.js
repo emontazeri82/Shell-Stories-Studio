@@ -4,6 +4,8 @@ module.exports = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
+    "./app/**/*.{js,ts,jsx,tsx}",    // include if you use /app
+    "./src/**/*.{js,ts,jsx,tsx}",    // include if code is under /src
   ],
   theme: {
     extend: {
@@ -14,10 +16,11 @@ module.exports = {
         inter: ['var(--font-inter)', 'sans-serif'],
         playfair: ['var(--font-playfair)', 'serif'],
         quicksand: ['var(--font-quicksand)', 'sans-serif'],
-      }      
+      },
     },
   },
   plugins: [],
-}
+};
+
 
 

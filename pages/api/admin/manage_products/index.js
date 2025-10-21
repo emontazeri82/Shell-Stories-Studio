@@ -12,9 +12,18 @@ const handler = createAdminHandler({
 });
 
 // 🧾 GET: Paginated Products
+// pages/api/admin/manage_products/index.js
 handler.get(async (req, res) => {
-  return handleGetPaginatedProducts(req, res);
+  console.log('[DEBUG] reached handler.get for /api/admin/manage_products');
+  console.log('[admin]', req.rid, 'handler.get START', req.url);
+  const t0 = Date.now();
+  try {
+    await handleGetPaginatedProducts(req, res);
+  } finally {
+    console.log('[admin]', req.rid, 'handler.get END in', Date.now() - t0, 'ms');
+  }
 });
+
 
 // ➕ POST: Create Product
 handler.post(async (req, res) => {

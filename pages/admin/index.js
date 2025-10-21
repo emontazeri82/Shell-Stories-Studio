@@ -1,24 +1,24 @@
-"use client";
 // pages/admin/index.js
 import Link from 'next/link';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../api/auth/[...nextauth]";
-import AdminOrdersPanel from '@/components/OrdersPanel/AdminOrdersPanel';
+//import AdminOrdersPanel from '@/components/OrdersPanel/AdminOrdersPanel';
 
 export async function getServerSideProps(context) {
     const session = await getServerSession(context.req, context.res, authOptions);
 
     // 🔐 Protect admin-only route
-    if (!session || session.user?.role !== "admin") {
-        console.warn("⛔ Unauthorized access attempt to /admin/admin_inventory");
+    const role = String(session?.user?.role || '').toUpperCase();
+    if (!session || role !== "ADMIN") {
+        console.warn("⛔ Unauthorized access attempt to /admin");
         return {
             redirect: {
-                destination: "/admin/login",
+                destination: "/admin/login?callbackUrl=${encodeURIComponent(context.resolvedUrl || '/admin')}",
                 permanent: false,
             },
         };
     }
-
+    context.res.setHeader('Cache-Control', 'no-store');
     // ✅ Clean session object for safety (e.g., nullify undefined fields)
     const safeSession = {
         ...session,

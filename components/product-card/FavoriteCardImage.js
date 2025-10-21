@@ -1,29 +1,29 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Image from "next/image";
 
-export default function FavoriteCardImage({
-    product,
-    fromCenter
-}) {
-    return (
-        <motion.div
-            id={`favorite-image-${product.id}`}
-            className="relative w-full h-64 scroll-mt-[30vh]"
-            initial={fromCenter ? { scale: 1 } : false}
-            animate={fromCenter ? { scale: [1, 1.1, 1] } : false}
-            transition={fromCenter ? { duration: 1.2, ease: "easeInOut" } : {}}
-            whileHover={{ scale: 1.03 }}
-        >
-            <Image
-                src={product.image_url}
-                alt={product.name}
-                fill
-                sizes="(min-width: 768px) 33vw, 100vw"
-                loading="lazy"
-                className="object-cover"
-            />
-        </motion.div>
-    );
+export default function FavoriteCardImage({ product, highlightFromCenter }) {
+  // Prefer primary media (if your /api/products added it), else legacy image_url
+  const src =
+    product?.primaryMedia?.url ||
+    product?.image_url ||
+    "/placeholder.png";
+
+  return (
+    <div
+      className={`relative aspect-square overflow-hidden ${
+        highlightFromCenter ? "animate-[pop_600ms_ease-out_1]" : ""
+      }`}
+    >
+      <Image
+        src={src}
+        alt={product?.name || "Product image"}
+        fill
+        sizes="(min-width: 768px) 33vw, 100vw"
+        className="object-cover transition-transform duration-300 group-hover:scale-105"
+        priority={false}
+      />
+    </div>
+  );
 }
+

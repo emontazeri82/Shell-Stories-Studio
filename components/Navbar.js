@@ -40,7 +40,7 @@ export default function Navbar({ onCartClick }) {
 
                     <span className="text-indigo-600 font-playfair font-bold tracking-wide leading-tight">
                         <span className="block text-xl sm:text-2xl">Shell Stories</span>
-                        <span className="block text-sm sm:text-2xl">Studio</span>
+                        <span className="block text-xl sm:text-2xl">Studio</span>
                     </span>
                 </Link>
             </div>

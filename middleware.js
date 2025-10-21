@@ -1,29 +1,72 @@
-// middleware.js
 import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 
+/** @param {import('next/server').NextRequest} req */
 export async function middleware(req) {
-  const url = req.nextUrl;
+  const url = req.nextUrl;                 // ✅ define first
+  const pathname = url.pathname;           // ✅ define first
 
-  // Apply rate limiting to login attempts
-  /*if (url.pathname === '/api/auth/callback/credentials') {
-    const limitResponse = await rateLimitEdge(req, { limit: 5, window: 60, prefix: 'login' });
-    if (limitResponse) return limitResponse; // Block excessive requests
-  }*/
+  console.log('[middleware] checking token for path:', pathname);
 
-  // Protect /admin routes (except login page)
+  // Skip system/static paths
+  if (
+    pathname.startsWith('/.well-known') ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon.ico')
+  ) {
+    return NextResponse.next();
+  }
+
+  if (req.method === 'OPTIONS') {
+    const res = new NextResponse(null, { status: 204 });
+    res.headers.set('Allow', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    return res;
+  }
+  console.time('[MW] ${pathname}');
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  const isProtectedPath = url.pathname.startsWith('/admin') && !url.pathname.startsWith('/admin/login');
+  console.log('[middleware] token found:', !!token, 'role:', token?.role);
+  console.log('[MW]', pathname, 'rid?', req.headers.get('x-request-id') || '-', 'token?', !!token, 'role:', token?.role);
+  console.timeEnd(`[MW] ${pathname}`);
+  
+  const isAdminApi = pathname.startsWith('/api/admin/');
+  const isAdminPage = pathname.startsWith('/admin') && pathname !== '/admin/login';
 
-  if (isProtectedPath && !token) {
-    return NextResponse.redirect(new URL('/admin/login', req.url));
+  const requireRole = process.env.REQUIRE_ADMIN_ROLE === '1';
+  const rawRole =
+    token?.role ??
+    token?.user?.role ??
+    token?.claims?.role ??
+    '';
+
+  const normalizedRole = String(rawRole).toUpperCase();
+  const hasAdminRole = normalizedRole === 'ADMIN';
+
+
+  const accept = req.headers.get('accept') || '';
+  const isXHR = req.headers.get('x-requested-with') === 'XMLHttpRequest';
+  const expectsJSON = isAdminApi || isXHR || accept.includes('application/json');
+
+  const authed = !!token && (!requireRole || hasAdminRole);
+
+  if (!authed) {
+    if (expectsJSON) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (isAdminPage) {
+      const loginUrl = url.clone();
+      loginUrl.pathname = '/admin/login';
+      loginUrl.search = '';
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/api/auth/callback/credentials', '/admin/:path*'],
+  matcher: ['/api/admin/:path*', '/admin/:path*'],
 };
+
+
+
+
 
 

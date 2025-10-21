@@ -1,33 +1,29 @@
-// components/product-card/FavoriteCardWrapper.js
 "use client";
 
-import { motion } from "framer-motion";
-
 export default function FavoriteCardWrapper({
-  children,
+  productId,
   onClick,
   isHighlighted,
-  productId,
-  productName,
+  children,
 }) {
   return (
-    <motion.div
+    <div
       id={`favorite-${productId}`}
-      onClick={() => onClick?.(productId)}
-      tabIndex={0}
       role="button"
-      aria-label={`View ${productName}`}
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      viewport={{ once: true, amount: 0.2 }}
-      className={`group cursor-pointer bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md
-        hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 
-        transform transition-transform duration-300 hover:scale-[1.03]
-        ${isHighlighted ? "ring-2 ring-indigo-500" : ""}
-      `}
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      className={`group rounded-xl border bg-white/70 dark:bg-zinc-900/70 backdrop-blur-sm
+        hover:shadow-lg transition overflow-hidden cursor-pointer outline-none
+        ${isHighlighted ? "ring-2 ring-indigo-500" : "ring-1 ring-black/5"}`}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
+

@@ -1,46 +1,52 @@
+// pages/products/index.js
 "use client";
 
-import { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
-import { fetchProducts } from "@/redux/slices/productsSlice";
-import { addToCart } from "@/redux/slices/cartSlice";
-import { useRouter } from "next/router";
+import { useState } from "react";
 import Layout from "@/components/Layout";
-import ProductModal from "@/components/ProductCard";
+import ProductModal from "@/components/product/ProductCard";
 import ProductFavorite from "@/components/product-card/ProductFavorite";
-import { toast } from "react-hot-toast";
 import { getProductsServerSideProps } from "@/lib/static-data/getServerSideProps";
+import { useRouter } from "next/router";
 import { useScrollToHighlightedProduct } from "@/hooks/useScrollToHighlightedProduct";
 
 export const getServerSideProps = getProductsServerSideProps;
 
 export default function ProductsPage({ products }) {
-  const dispatch = useDispatch();
   const router = useRouter();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [highlightedId, setHighlightedId] = useState(null);
-  const [highlightFromCenter, setHighlightFromCenter] = useState(null);
+  const [highlightFromCenter, setHighlightFromCenter] = useState(false);
 
-  // Fetch all products on mount
-  useEffect(() => {
-    dispatch(fetchProducts());
-  }, [dispatch]);
-
-  // Auto-scroll to image from URL if needed
+  // Scroll to highlighted card if query indicates
   useScrollToHighlightedProduct({
     setHighlightedId,
     setHighlightFromCenter,
   });
 
-  // Open modal when clicking a product
-  const handleProductClick = (product) => {
+  const hydrateAndOpen = async (product) => {
+    try {
+      const res = await fetch(`/api/products/${product.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.product) {
+          setSelectedProduct({ ...product, ...data.product });
+          return;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
     setSelectedProduct(product);
+  };
+
+  const handleProductClick = (product) => {
+    hydrateAndOpen(product);
     setHighlightedId(null);
+    setHighlightFromCenter(false);
     router.push(`/products?id=${product.id}`, undefined, { shallow: true });
   };
 
-  // Close modal and clear query param
   const handleCloseModal = () => {
     setSelectedProduct(null);
     router.replace("/products", undefined, { shallow: true });
@@ -60,25 +66,19 @@ export default function ProductsPage({ products }) {
               product={product}
               onClick={() => handleProductClick(product)}
               isHighlighted={highlightedId === product.id}
-              highlightFromCenter={highlightFromCenter === product.id}
+              fromCenter={highlightedId === product.id && highlightFromCenter}
             />
           ))}
         </div>
-      </div>
 
-      {selectedProduct && (
-        <ProductModal
-          product={selectedProduct}
-          onClose={handleCloseModal}
-          onAddToCart={() => {
-            dispatch(addToCart(selectedProduct));
-            toast.success("✅ Added to cart");
-          }}
-        />
-      )}
+        {selectedProduct && (
+          <ProductModal product={selectedProduct} onClose={handleCloseModal} />
+        )}
+      </div>
     </Layout>
   );
 }
+
 
 
 

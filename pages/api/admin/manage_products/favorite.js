@@ -4,6 +4,7 @@ import { sendErrorResponse, sendSuccessResponse } from '@/lib/api';
 import { createAdminHandler } from '@/lib/middleware/createAdminHandler';
 import { sanitizeFavoriteToggle } from '@/lib/utils/sanitizeFavoriteToggle';
 import { safeRedisKey } from '@/lib/redis/formatkey';
+import { ADMIN_FAVORITES_MAX } from '@/lib/constant';
 
 const handler = createAdminHandler();
 
@@ -24,8 +25,8 @@ handler.post(async (req, res) => {
       `SELECT COUNT(*) as count FROM products WHERE is_favorite = 1`
     );
 
-    if (currentFavoriteCount.count >= 8 && is_favorite === 1) {
-      return sendErrorResponse(res, 400, 'You can only have 8 favorite products.');
+    if (currentFavoriteCount.count >= ADMIN_FAVORITES_MAX && is_favorite === 1) {
+      return sendErrorResponse(res, 400, `You can only have ${ADMIN_FAVORITES_MAX} favorite products.`);
     }
 
     await db.run(`UPDATE products SET is_favorite = ? WHERE id = ?`, [is_favorite, productId]);

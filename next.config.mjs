@@ -2,7 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['res.cloudinary.com'], // ✅ allow Cloudinary image host
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname : 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+    formats: ['image/avif', 'image/webp'],
   },
 };
 

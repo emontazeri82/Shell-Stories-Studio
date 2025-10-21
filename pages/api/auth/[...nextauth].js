@@ -1,121 +1,89 @@
 // pages/api/auth/[...nextauth].js
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import { z } from 'zod';
 import { verifyPassword } from '@/utils/password';
 import { rateLimiter } from '@/lib/middleware/rateLimiter';
+import { getUserByEmail } from '@/lib/db/users';   // <-- use the helper
 
-const adminEmail = process.env.ADMIN_EMAIL;
-const hashedPassword = process.env.HASHED_ADMIN_PASSWORD; // ✅ Use from .env only
+const CredsSchema = z.object({
+  email: z.string().email().max(256),
+  password: z.string().min(1).max(512),
+});
 
 export const authOptions = {
+  secret: process.env.NEXTAUTH_SECRET,  // ✅ add this line
+  session: { strategy: 'jwt' },
+  pages: { signIn: '/admin/login' },
   providers: [
     CredentialsProvider({
       name: 'Admin Login',
       credentials: {
-        email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" }
+        email: { label: 'Email', type: 'text' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const inputEmail = String(credentials?.email || '').trim();
-        const inputPassword = String(credentials?.password || '').trim();
+        const parsed = CredsSchema.safeParse({
+          email: String(credentials?.email || '').trim(),
+          password: String(credentials?.password || '').trim(),
+        });
+        if (!parsed.success) return null;
 
-        //console.log("🔍 Received credentials:", credentials);
-        //console.log("✅ Input email:", inputEmail);
-        //console.log("✅ Expected email:", adminEmail);
-        //console.log("📌 Email match:", inputEmail === adminEmail);
+        const { email, password } = parsed.data;
 
-        if (!inputEmail || !inputPassword) {
-          console.log("❌ Missing credentials");
-          return null;
-        }
+        const user = await getUserByEmail(email); // <- from your DB
+        if (!user?.password_hash) return null;
 
-        if (inputEmail !== adminEmail) {
-          console.log("❌ Email does not match");
-          return null;
-        }
+        const ok = await verifyPassword(password, user.password_hash);
+        if (!ok) return null;
 
-        try {
-          //console.log("✅ Loaded HASHED_ADMIN_PASSWORD:", JSON.stringify(hashedPassword));
-
-          if (!hashedPassword || !hashedPassword.startsWith('$argon2id$')) {
-            console.error("❌ Invalid HASHED_ADMIN_PASSWORD format in .env");
-            return null;
-          }
-
-          const passwordMatches = await verifyPassword(inputPassword, hashedPassword);
-          //console.log("🧪 Password match:", passwordMatches);
-
-          if (passwordMatches) {
-            console.log("🎉 Success! Logging in.");
-            return {
-              id: 1,
-              name: 'Admin',
-              email: inputEmail,
-              role: 'admin',
-              image: null, // 👈 Required to avoid serialization issues in Next.js
-            };
-          }
-        } catch (err) {
-          console.error("❌ Error verifying password:", err);
-        }
-
-        console.log("❌ Invalid credentials.");
-        return null;
-      }
-    })
+        const role = String(user.role || 'user').toUpperCase(); // 'user'|'admin' -> 'USER'|'ADMIN'
+        return {
+          id: String(user.id),
+          email: user.email,
+          name: user.name || 'User',
+          role,
+          image: null,
+        };
+      },
+    }),
   ],
-  session: {
-    strategy: 'jwt',
-  },
-  pages: {
-    signIn: '/admin/login',
-  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.role = user.role || 'admin';
+        token.role = user.role || 'USER'; // uppercase already
       }
+      if (!token.role) token.role = 'USER';
       return token;
     },
     async session({ session, token }) {
-      // ✅ Always check that session.user exists before assigning
-      if (!session.user) {
-        session.user = {};
-      }
-
-      session.user.id = token.id;
-      session.user.email = token.email;
-      session.user.name = token.name;
-      session.user.role = token.role || 'admin';
+      session.user = session.user || {};
+      session.user.id = token.id || session.user.id;
+      session.user.email = token.email || session.user.email;
+      session.user.name = token.name || session.user.name || 'User';
+      session.user.role = token.role || 'USER';
       session.user.image = null;
-
       return session;
     },
   },
-  // Optional logger for debugging auth issues
   logger: {
-    error(code, metadata) {
-      console.error("❌ NextAuth error:", code, metadata);
-    },
-    warn(code) {
-      console.warn("⚠️ NextAuth warning:", code);
-    },
-    debug(code, metadata) {
-      console.debug("🐞 NextAuth debug:", code, metadata);
-    },
+    error(code, metadata) { console.error('❌ NextAuth error:', code, metadata); },
+    warn(code) { console.warn('⚠️ NextAuth warning:', code); },
+    debug(code, metadata) { /* console.debug('🐞', code, metadata); */ },
   },
 };
 
 export default async function handler(req, res) {
-  // ✅ Apply rateLimiter ONLY to POST (login attempts)
   if (req.method === 'POST') {
-    await rateLimiter(req, res, () => {}, { limit: 10, window: 60 });
+    const ok = await new Promise(resolve =>
+      rateLimiter(req, res, () => resolve(true), { limit: 10, window: 60 })
+    );
+    if (!ok || res.headersSent) return;
   }
-
-  return await NextAuth(req, res, authOptions);
+  return NextAuth(req, res, authOptions);
 }
 
 

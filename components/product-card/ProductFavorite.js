@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Element } from "react-scroll";
@@ -10,7 +9,7 @@ export default function ProductFavorite({
   product,
   onClick,
   isHighlighted,
-  fromCenter,
+  highlightFromCenter, // ✅ match parent prop name
 }) {
   return (
     <Element name={`favorite-${product.id}`}>
@@ -21,7 +20,7 @@ export default function ProductFavorite({
       >
         <FavoriteCardImage
           product={product}
-          fromCenter={fromCenter}
+          highlightFromCenter={highlightFromCenter} // ✅ pass consistently
         />
         <FavoriteCardInfo product={product} />
       </FavoriteCardWrapper>

@@ -16,7 +16,14 @@ import {
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { usePersistentCart } from "@/hooks/usePersistentCart";
+
 const queryClient = new QueryClient();
+
+function PersistentCartProvider({ children }) {
+  usePersistentCart();
+  return children;
+}
 
 function App({ Component, pageProps }) {
   return (
@@ -31,7 +38,9 @@ function App({ Component, pageProps }) {
           <ThemeApplier>
             <ErrorBoundary>
               <AppInitializer />
-              <Component {...pageProps} />
+              <PersistentCartProvider>
+                <Component {...pageProps} />
+              </PersistentCartProvider>
               <Toaster position="top-right" />
             </ErrorBoundary>
           </ThemeApplier>

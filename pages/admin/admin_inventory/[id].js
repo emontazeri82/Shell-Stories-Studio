@@ -1,6 +1,6 @@
 // pages/admin/admin_inventory/[id].js
 import { useRouter } from 'next/router';
-import ProductForm from '@/components/admin_dashboard/ProductForm';
+import ProductForm from '@/components/admin_dashboard/product_form/ProductForm';
 
 export default function EditProductPage() {
   const router = useRouter();

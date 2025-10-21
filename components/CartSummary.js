@@ -24,6 +24,7 @@ export default function CartSummary() {
 
   const handleClear = () => {
     dispatch(clearCart());
+    localStorage.removeItem("cartItems");
     toast("🧹 Cart cleared");
   };
 
