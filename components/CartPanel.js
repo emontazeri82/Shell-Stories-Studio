@@ -7,7 +7,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import CartItem from "./CartItem";
 import { useRef, useEffect } from "react";
-import { useClickOutside } from "./useClickOutside";
+import { useClickOutside } from "@/components/useClickOutside";
 import CartSummary from "./CartSummary";
 import { ShoppingCartIcon } from "@heroicons/react/24/outline";
 

@@ -36,7 +36,7 @@ async function createTables(db) {
   await db.exec(`
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
       description TEXT,
       price REAL NOT NULL DEFAULT 0 CHECK (price >= 0),
       stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
@@ -47,6 +47,28 @@ async function createTables(db) {
       is_favorite INTEGER DEFAULT 0 CHECK (is_favorite IN (0,1)),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+  `);
+
+  // 2️⃣ Add updated_at column if missing
+  const columns = await db.all(`PRAGMA table_info(products)`);
+  const hasUpdatedAt = columns.some((c) => c.name === "updated_at");
+
+  if (!hasUpdatedAt) {
+    console.log("🪄 Adding missing 'updated_at' column...");
+    await db.exec(`ALTER TABLE products ADD COLUMN updated_at TEXT;`);
+    await db.exec(`UPDATE products SET updated_at = datetime('now');`);
+  }
+
+  // 3️⃣ Create trigger to auto-update updated_at on change
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS products_update_timestamp
+    AFTER UPDATE ON products
+    FOR EACH ROW
+    BEGIN
+      UPDATE products
+      SET updated_at = datetime('now')
+      WHERE id = OLD.id;
+    END;
   `);
 
   // product_media (now includes is_primary)
@@ -139,6 +161,7 @@ async function createTables(db) {
       delivered_status TEXT DEFAULT 'Not Delivered',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    
 
     CREATE TABLE IF NOT EXISTS order_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

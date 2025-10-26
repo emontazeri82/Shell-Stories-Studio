@@ -1,19 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { useRouter } from 'next/router';
-import { useDispatch } from 'react-redux';
-import { createProduct, updateProductById } from '@/lib/adminApi/productActions';
-import { updateProductInStore } from '@/redux/slices/productsSlice';
-import fetchJSON from '@/lib/fetchJSON';
+"use client";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { useRouter } from "next/router";
+import { useDispatch } from "react-redux";
+import { createProduct, updateProductById } from "@/lib/adminApi/productActions";
+import { updateProductInStore } from "@/redux/slices/productsSlice";
+import fetchJSON from "@/lib/fetchJSON";
 
-import BasicsFields from './parts/BasicsFields';
-import PriceStockFields from './parts/PriceStockFields';
-import CategoryDescription from './parts/CategoryDescription';
-import LegacyImageUploader from './parts/LegacyImageUploader';
-import MediaSection from './parts/MediaSection';
-
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dr5v7f0wd';
-const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UNSIGNED_PRESET || 'unsigned_upload';
+import BasicsFields from "./parts/BasicsFields";
+import PriceStockFields from "./parts/PriceStockFields";
+import CategoryDescription from "./parts/CategoryDescription";
+import MediaSection from "./parts/MediaSection";
 
 export default function ProductForm({ productId }) {
   const router = useRouter();
@@ -23,32 +20,42 @@ export default function ProductForm({ productId }) {
   const [media, setMedia] = useState([]);
   const [loadingProduct, setLoadingProduct] = useState(!!productId);
   const [loadingMedia, setLoadingMedia] = useState(!!productId);
-  const [uploading, setUploading] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm();
 
-  // Load product basics
+  const handleMediaChange = useCallback((uploaded) => {
+    console.log("[Form] handleMediaChange received:", uploaded);
+    setMedia((prev) => [ ...(prev || []), ...(uploaded || []) ]);
+  }, []);
+
+  // Load product for edit
   useEffect(() => {
-    if (!productId) return;
     let cancelled = false;
+    if (!productId) { setLoadingProduct(false); return; }
 
     (async () => {
       try {
         setLoadingProduct(true);
+        console.log("[Form] fetching product:", productId);
         const data = await fetchJSON(`/api/admin/manage_products/${productId}`);
         if (cancelled) return;
+
         if (data?.product) {
-          setProduct(data.product);
-          reset({ ...data.product, image_url: data.product.image_url || '' });
-          setImageUrl(data.product.image_url || '');
+          console.log("[Form] fetched product:", data.product);
+          setProduct((prev) => {
+            if (!prev || prev.id !== data.product.id) {
+              reset({ ...data.product });
+              return data.product;
+            }
+            return prev;
+          });
         } else {
-          alert('Product not found.');
-          router.replace('/admin/admin_inventory');
+          alert("Product not found.");
+          router.replace("/admin/admin_inventory");
         }
       } catch (err) {
         alert(`Failed to load product: ${err.message}`);
-        router.replace('/admin/admin_inventory');
+        router.replace("/admin/admin_inventory");
       } finally {
         if (!cancelled) setLoadingProduct(false);
       }
@@ -57,17 +64,18 @@ export default function ProductForm({ productId }) {
     return () => { cancelled = true; };
   }, [productId, reset, router]);
 
-  // Load media (public endpoint)
+  // Load media for edit
   useEffect(() => {
-    if (!productId) return;
     let cancelled = false;
+    if (!productId) { setLoadingMedia(false); return; }
 
     (async () => {
       try {
         setLoadingMedia(true);
         const d = await fetchJSON(`/api/products/${productId}/media`);
         if (cancelled) return;
-        setMedia(Array.isArray(d?.items) ? d.items : []);
+        const items = Array.isArray(d?.items) ? d.items : (Array.isArray(d?.media) ? d.media : []);
+        setMedia(items);
       } catch {
         if (!cancelled) setMedia([]);
       } finally {
@@ -78,97 +86,77 @@ export default function ProductForm({ productId }) {
     return () => { cancelled = true; };
   }, [productId]);
 
-  const firstImageUrl = useMemo(() => {
-    const primary = media.find(m => m.is_primary && m.kind === 'image');
-    const first = media.find(m => m.kind === 'image');
-    return (primary || first)?.secure_url || '';
+  const derivedImageUrl = useMemo(() => {
+    if (!Array.isArray(media) || media.length === 0) return "";
+    const isImg = (m) => (m.resourceType || m.resource_type || m.kind || "").toLowerCase() === "image";
+    const getUrl = (m) => m.url || m.secure_url || "";
+    const primary = media.find((m) => m.is_primary && isImg(m));
+    if (primary) return getUrl(primary);
+    const first = media.find(isImg);
+    return first ? getUrl(first) : "";
   }, [media]);
-
-  // Single (optional) unsigned Cloudinary upload
-  async function uploadMainImage(file) {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('upload_preset', UPLOAD_PRESET);
-
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-      method: 'POST',
-      body: fd,
-    });
-    const txt = await res.text();
-    if (!res.ok) throw new Error(txt.slice(0, 180) || `HTTP ${res.status}`);
-
-    const data = JSON.parse(txt);
-    if (!data?.secure_url) throw new Error(data?.error?.message || 'Upload did not include secure_url');
-    return data.secure_url;
-  }
 
   async function onSubmit(formData) {
     try {
-      const fallback = firstImageUrl || '';
-      const payload = { ...formData, ...(imageUrl || fallback ? { image_url: imageUrl || fallback } : {}) };
+      const payload = { ...formData };
+      if (derivedImageUrl) payload.image_url = derivedImageUrl;
+      console.log("[Form] payload being sent:", payload);
 
       if (productId) {
+        console.log("[Form] updating product:", productId, payload);
         const updated = await updateProductById(productId, payload);
         const merged = { id: Number(productId), ...payload, ...(updated?.product || {}) };
         dispatch(updateProductInStore(merged));
-      } else {
-        await createProduct(payload);
+        alert("Product updated");
+        router.push("/admin/admin_inventory");
+        return;
       }
 
-      alert('Product saved successfully');
-      router.push('/admin/admin_inventory');
+      // CREATE NEW
+      console.log("[Form] creating product with payload:", payload);
+      const newProduct = await createProduct(payload); // returns { id, ... }
+      console.log("[Form] createProduct returned:", newProduct);
+
+      if (newProduct?.id) {
+        setProduct(newProduct); // ⬅️ this gives you product?.id
+        alert(`Product created (id=${newProduct.id}). You can upload media now.`);
+        // Option A: stay here so MediaSection sees product?.id and uploads work
+        // Option B: navigate to edit page:
+        // router.push(`/admin/admin_inventory/${newProduct.id}`);
+      } else {
+        console.warn("[Form] No id in createProduct return:", newProduct);
+        alert("Product created but no id returned. Check API response/logs.");
+      }
     } catch (err) {
+      console.error("onSubmit error:", err);
       alert(`Failed to save product: ${err.message}`);
     }
   }
 
-  if (loadingProduct && productId) {
-    return <div>Loading product…</div>;
-  }
+  console.log("[Form] render: prop productId=", productId, "state product?.id=", product?.id);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <BasicsFields register={register} errors={errors} />
-
       <PriceStockFields register={register} errors={errors} />
-
       <CategoryDescription register={register} />
 
-      <LegacyImageUploader
-        uploading={uploading}
-        onPick={async (file) => {
-          if (!file) return;
-          if (file.size > 10 * 1024 * 1024) {
-            alert('File too large (max 10MB)');
-            return;
-          }
-          try {
-            setUploading(true);
-            const url = await uploadMainImage(file);
-            setImageUrl(url);
-          } catch (e) {
-            alert(`Image upload failed: ${e.message}`);
-          } finally {
-            setUploading(false);
-          }
-        }}
-        imageUrl={imageUrl}
-      />
+      <div className="text-xs text-gray-500">
+        Debug → productId prop: <b>{String(productId)}</b> | product?.id: <b>{String(product?.id)}</b>
+      </div>
 
       <MediaSection
-        productId={productId}
+        productId={productId || product?.id}   // ⬅️ critical: pass state id after create
         media={media}
-        onMediaChange={setMedia}
+        onMediaChange={handleMediaChange}
         loading={loadingMedia}
       />
 
-      <button
-        type="submit"
-        disabled={uploading}
-        className="bg-blue-600 text-white py-2 px-4 rounded-md disabled:bg-gray-400"
-      >
-        {productId ? 'Update Product' : 'Add Product'}
+      <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded-md disabled:bg-gray-400">
+        {productId ? "Update Product" : "Add Product"}
       </button>
     </form>
   );
 }
+
+

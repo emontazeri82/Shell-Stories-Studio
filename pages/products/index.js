@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import Layout from "@/components/Layout";
-import ProductModal from "@/components/product/ProductCard";
+import ProductCard from "@/components/product/ProductCard";
 import ProductFavorite from "@/components/product-card/ProductFavorite";
 import { getProductsServerSideProps } from "@/lib/static-data/getServerSideProps";
 import { useRouter } from "next/router";
@@ -72,7 +72,7 @@ export default function ProductsPage({ products }) {
         </div>
 
         {selectedProduct && (
-          <ProductModal product={selectedProduct} onClose={handleCloseModal} />
+          <ProductCard product={selectedProduct} onClose={handleCloseModal} />
         )}
       </div>
     </Layout>

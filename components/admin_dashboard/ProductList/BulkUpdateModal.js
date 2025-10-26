@@ -129,13 +129,18 @@ export default function BulkUpdateModal({ isOpen, onClose, onSave, field }) {
                   className="w-full mb-4"
                   disabled={uploading}
                 />
-                {imageUrl && (
+                {imageUrl ? (
                   <img
                     src={imageUrl}
                     alt="Preview"
                     className="w-24 h-24 object-cover rounded border mb-4"
                   />
+                ) : (
+                  <div className="w-24 h-24 bg-gray-200 flex items-center justify-center text-xs text-gray-500 rounded border mb-4">
+                    No image
+                  </div>
                 )}
+
                 {uploading && <p className="text-sm text-blue-600">Uploading…</p>}
               </>
             ) : isFavoriteField ? (

@@ -1,3 +1,4 @@
+// components/product/ProductCard.js
 "use client";
 
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
@@ -5,10 +6,10 @@ import { memo, useEffect, useRef, useState } from "react";
 import FocusLock from "react-focus-lock";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, openCart } from "@/redux/slices/cartSlice";
-import { useClickOutside } from "../useClickOutside";
+import { useClickOutside } from "@/components/useClickOutside";
 import ProductGallery from "@/components/product/ProductGallery";
 
-function ProductModal({ product, onClose}) {
+function ProductCard({ product, onClose }) {
   if (!product) return null;
 
   const stockFont = "font-playfair";
@@ -146,7 +147,7 @@ function ProductModal({ product, onClose}) {
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                   {product.name}
                 </h1>
-                <p className="text-2xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                <p className="text-2xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 to purple-600 bg-clip-text text-transparent">
                   ${Number(product.price || 0).toFixed(2)}
                 </p>
                 <p className="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -290,7 +291,8 @@ function ProductModal({ product, onClose}) {
   );
 }
 
-export default memo(ProductModal);
+export default memo(ProductCard);
+
 
 
 

@@ -22,11 +22,11 @@ export async function middleware(req) {
     res.headers.set('Allow', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     return res;
   }
-  console.time('[MW] ${pathname}');
+  console.log(`[MW] ${pathname} start`);
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   console.log('[middleware] token found:', !!token, 'role:', token?.role);
   console.log('[MW]', pathname, 'rid?', req.headers.get('x-request-id') || '-', 'token?', !!token, 'role:', token?.role);
-  console.timeEnd(`[MW] ${pathname}`);
+  console.log(`[MW] ${pathname} end`);
   
   const isAdminApi = pathname.startsWith('/api/admin/');
   const isAdminPage = pathname.startsWith('/admin') && pathname !== '/admin/login';

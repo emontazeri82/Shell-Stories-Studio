@@ -3,10 +3,6 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/[...catchAll]": "pages/[...catchAll].js",
-  "/products": "pages/products.js",
   "/admin/admin_inventory": "pages/admin/admin_inventory.js",
-  "/api/admin/manage_products": "pages/api/admin/manage_products.js",
-  "/admin/admin_inventory/[id]": "pages/admin/admin_inventory/[id].js",
-  "/api/products/[id]/media": "pages/api/products/[id]/media.js",
-  "/api/admin/manage_products/[id]": "pages/api/admin/manage_products/[id].js"
+  "/api/admin/manage_products": "pages/api/admin/manage_products.js"
 }
