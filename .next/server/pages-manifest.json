@@ -3,6 +3,9 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/[...catchAll]": "pages/[...catchAll].js",
+  "/admin/login": "pages/admin/login.js",
+  "/api/auth/[...nextauth]": "pages/api/auth/[...nextauth].js",
+  "/admin": "pages/admin.js",
   "/admin/admin_inventory": "pages/admin/admin_inventory.js",
   "/api/admin/manage_products": "pages/api/admin/manage_products.js"
 }
