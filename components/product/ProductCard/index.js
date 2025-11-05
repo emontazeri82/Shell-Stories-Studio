@@ -1,4 +1,3 @@
-// components/product/ProductCard.js
 "use client";
 
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
@@ -7,12 +6,17 @@ import FocusLock from "react-focus-lock";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, openCart } from "@/redux/slices/cartSlice";
 import { useClickOutside } from "@/components/useClickOutside";
-import ProductGallery from "@/components/product/ProductGallery";
+import ProductGallery from "../ProductGallery";
 
 function ProductCard({ product, onClose }) {
-  if (!product) return null;
+  // ────────────────────────────────
+  // Safety checks
+  // ────────────────────────────────
+  if (!product) {
+    console.warn("[ProductCard] ⚠️ No product provided");
+    return null;
+  }
 
-  const stockFont = "font-playfair";
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const modalRef = useRef(null);
@@ -29,7 +33,9 @@ function ProductCard({ product, onClose }) {
     setQuantity(cartItem ? cartItem.quantity : 1);
   }, [cartItem]);
 
-  // Stock helpers
+  // ────────────────────────────────
+  // Stock logic
+  // ────────────────────────────────
   const rawStock = Number(product.stock);
   const hasStockCap = Number.isFinite(rawStock);
   const stockNum = hasStockCap ? rawStock : Infinity;
@@ -55,14 +61,22 @@ function ProductCard({ product, onClose }) {
   };
   const handleDecrement = () => setSafe(quantity - 1);
 
+  // ────────────────────────────────
+  // Close on ESC
+  // ────────────────────────────────
   useEffect(() => {
-    const handleEsc = (e) => e.key === "Escape" && onClose();
+    const handleEsc = (e) => e.key === "Escape" && onClose?.();
     document.addEventListener("keydown", handleEsc);
     return () => document.removeEventListener("keydown", handleEsc);
   }, [onClose]);
 
+  // ────────────────────────────────
+  // Cart handlers
+  // ────────────────────────────────
   const handleAddToCart = () => {
     if (!inStock) return;
+    console.log("[ProductCard] 🛒 Adding to cart:", product.name, "qty:", quantity);
+
     dispatch(
       addToCart({
         id: product.id,
@@ -78,17 +92,19 @@ function ProductCard({ product, onClose }) {
 
   const handleContinueShopping = () => {
     setAdded(false);
-    onClose();
+    onClose?.();
   };
 
   const handleGoToCart = () => {
     dispatch(openCart());
-    onClose();
+    onClose?.();
   };
 
   const remaining = hasStockCap ? Math.max(stockNum - quantity, 0) : null;
 
-  // Safe media fallback
+  // ────────────────────────────────
+  // Safe media fallback for gallery
+  // ────────────────────────────────
   const galleryMedia =
     Array.isArray(product.media) && product.media.length
       ? product.media
@@ -96,6 +112,9 @@ function ProductCard({ product, onClose }) {
         ? [{ id: "legacy", kind: "image", secure_url: product.image_url, public_id: "legacy" }]
         : [];
 
+  // ────────────────────────────────
+  // Render
+  // ────────────────────────────────
   return (
     <AnimatePresence>
       <motion.div
@@ -120,7 +139,7 @@ function ProductCard({ product, onClose }) {
               shadow-2xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border border-gray-200/30 dark:border-gray-700/30
               overflow-hidden"
           >
-            {/* Close */}
+            {/* Close button */}
             <button
               onClick={onClose}
               className="absolute top-3 right-3 text-gray-400 hover:text-gray-800 dark:hover:text-white text-2xl font-bold transition"
@@ -147,7 +166,7 @@ function ProductCard({ product, onClose }) {
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                   {product.name}
                 </h1>
-                <p className="text-2xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 to purple-600 bg-clip-text text-transparent">
+                <p className="text-2xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                   ${Number(product.price || 0).toFixed(2)}
                 </p>
                 <p className="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -155,7 +174,7 @@ function ProductCard({ product, onClose }) {
                 </p>
               </div>
 
-              {/* Quantity */}
+              {/* Quantity controls */}
               <motion.div
                 animate={controls}
                 className="flex flex-col gap-1 mb-4"
@@ -214,7 +233,7 @@ function ProductCard({ product, onClose }) {
                             }`}
                         />
                       </span>
-                      <span className={`${stockFont} text-[12px] font-medium tracking-wide`}>
+                      <span className="font-playfair text-[12px] font-medium tracking-wide">
                         <AnimatePresence mode="popLayout">
                           <motion.span
                             key={inStock ? `txt-${remaining}` : "soldout"}
@@ -237,7 +256,7 @@ function ProductCard({ product, onClose }) {
                 )}
               </motion.div>
 
-              {/* CTA */}
+              {/* CTA Section */}
               <motion.div className="mt-4 min-h-[90px] flex flex-col justify-center gap-3">
                 <AnimatePresence mode="wait">
                   {!added ? (

@@ -1,21 +1,30 @@
-// components/admin_dashboard/ProductSearch.js
-import { useEffect, useState } from 'react';
+"use client";
+
+import { useEffect, useState } from "react";
 
 export default function ProductSearch({ value, onChange }) {
-  const [input, setInput] = useState(value || '');
+  const [input, setInput] = useState(value || "");
 
   useEffect(() => {
+    // 🕓 Debounce user input to avoid excessive queries
     const timer = setTimeout(() => {
-      onChange(input); // Pass search query to parent after debounce
+      console.log("[ProductSearch] 🔍 Triggering search with query:", input);
+      onChange?.(input); // safe call
     }, 400);
-    return () => clearTimeout(timer);
-  }, [input]);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [input, onChange]);
 
   return (
     <input
       type="text"
       value={input}
-      onChange={(e) => setInput(e.target.value)}
+      onChange={(e) => {
+        console.log("[ProductSearch] ✏️ User typing:", e.target.value);
+        setInput(e.target.value);
+      }}
       placeholder="Search products by name"
       className="p-2 border rounded w-full"
     />

@@ -1,11 +1,12 @@
-// components/product/ProductGallery.js
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
-/** Split a URL into { base, query } so we can safely modify the path without breaking ?params */
+/* ─────────────────────────────────────────────
+   🔹 Split a URL safely into { base, query }
+────────────────────────────────────────────── */
 function splitQuery(rawUrl) {
   try {
     const u = new URL(rawUrl);
@@ -13,12 +14,13 @@ function splitQuery(rawUrl) {
     const query = u.search || "";
     return { base, query };
   } catch {
-    // Not a valid URL — treat entire string as base
     return { base: rawUrl || "", query: "" };
   }
 }
 
-/** Insert Cloudinary transforms after `/upload/` if URL is Cloudinary (keeps query params intact) */
+/* ─────────────────────────────────────────────
+   🔹 Insert Cloudinary transforms after `/upload/`
+────────────────────────────────────────────── */
 function withCldParams(rawUrl, params) {
   if (!rawUrl) return rawUrl;
   try {
@@ -36,16 +38,15 @@ function withCldParams(rawUrl, params) {
   }
 }
 
-/** Generate a video poster URL that’s robust with query params and Cloudinary paths */
+/* ─────────────────────────────────────────────
+   🔹 Generate Cloudinary video poster (frame grab)
+────────────────────────────────────────────── */
 function makeCldPoster(rawUrl) {
   if (!rawUrl) return null;
   try {
     const u = new URL(rawUrl);
-    if (!/res\.cloudinary\.com|cloudinary\.com/.test(u.hostname)) {
-      // Non-Cloudinary: no reliable first-frame; return null
-      return null;
-    }
-    // Insert a simple "so_1" (seek to 1s) to make a poster frame, then force .jpg
+    if (!/res\.cloudinary\.com|cloudinary\.com/.test(u.hostname)) return null;
+
     const parts = u.pathname.split("/upload/");
     if (parts.length !== 2) return null;
 
@@ -57,7 +58,9 @@ function makeCldPoster(rawUrl) {
   }
 }
 
-/** Normalize both old and new media objects into a single shape */
+/* ─────────────────────────────────────────────
+   🔹 Normalize media objects into unified format
+────────────────────────────────────────────── */
 function normalizeItem(m) {
   const url = m?.url || m?.secure_url || m?.src || "";
   const typeRaw = m?.resourceType || m?.resource_type || m?.kind || "";
@@ -77,43 +80,44 @@ function normalizeItem(m) {
     : null;
 
   const thumb = withCldParams(url, ["f_auto", "q_auto", "c_fill", "w_180", "h_180"]);
-
   const poster = isVideo ? makeCldPoster(url) : null;
 
-  return {
-    key,
-    url,
-    type: isVideo ? "video" : "image",
-    mainImage,
-    thumb,
-    poster,
-  };
+  return { key, url, type: isVideo ? "video" : "image", mainImage, thumb, poster };
 }
 
+/* ─────────────────────────────────────────────
+   🎨 Main ProductGallery Component
+────────────────────────────────────────────── */
 export default function ProductGallery({ media = [], productName = "" }) {
-  const items = useMemo(
-    () => (Array.isArray(media) ? media.map(normalizeItem) : []),
-    [media]
-  );
+  const items = useMemo(() => {
+    const normalized = Array.isArray(media) ? media.map(normalizeItem) : [];
+    console.log("[Gallery] 🎨 Normalized media items:", normalized.length);
+    return normalized;
+  }, [media]);
 
   const [active, setActive] = useState(0);
 
-  // Keep active index in range if media changes
+  // Keep active index valid if media list changes
   useEffect(() => {
-    if (active >= items.length) setActive(0);
+    if (active >= items.length) {
+      console.warn("[Gallery] ⚠️ Active index out of range, resetting.");
+      setActive(0);
+    }
   }, [items.length, active]);
 
   const activeItem = items[active];
-
   if (!activeItem) {
+    console.warn("[Gallery] ⚠️ No active media item to render.");
     return (
-      <div className="relative aspect-square rounded-xl bg-zinc-100 dark:bg-zinc-800" />
+      <div className="relative aspect-square rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-gray-400 text-sm">
+        No media available
+      </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      {/* Main */}
+      {/* ──────────────── Main Image / Video ──────────────── */}
       <div className="relative aspect-square rounded-xl overflow-hidden bg-black/5">
         <AnimatePresence mode="wait">
           <motion.div
@@ -132,22 +136,28 @@ export default function ProductGallery({ media = [], productName = "" }) {
                 playsInline
                 preload="metadata"
                 poster={activeItem.poster || undefined}
+                onError={() =>
+                  console.error("[Gallery] ❌ Failed to load video:", activeItem.url)
+                }
               />
             ) : (
               <Image
                 src={activeItem.mainImage || activeItem.url}
-                alt={`${productName} image`}
+                alt={`${productName || "Product"} image`}
                 fill
                 sizes="(min-width: 1024px) 600px, (min-width: 768px) 50vw, 100vw"
                 className="object-cover"
                 priority
+                onError={() =>
+                  console.error("[Gallery] ❌ Failed to load image:", activeItem.url)
+                }
               />
             )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Thumbnails */}
+      {/* ──────────────── Thumbnails ──────────────── */}
       {items.length > 1 && (
         <div className="grid grid-cols-5 gap-2">
           {items.map((t, i) => (
@@ -155,9 +165,8 @@ export default function ProductGallery({ media = [], productName = "" }) {
               key={t.key}
               type="button"
               onClick={() => setActive(i)}
-              className={`relative aspect-square rounded-lg overflow-hidden ring-1 ring-black/5 ${
-                i === active ? "ring-2 ring-indigo-500" : ""
-              }`}
+              className={`relative aspect-square rounded-lg overflow-hidden ring-1 ring-black/5 transition
+                ${i === active ? "ring-2 ring-indigo-500 scale-[1.02]" : "hover:ring-2 hover:ring-indigo-300"}`}
               aria-label={`Show ${t.type}`}
               aria-current={i === active ? "true" : undefined}
             >
@@ -166,6 +175,7 @@ export default function ProductGallery({ media = [], productName = "" }) {
                   src={t.url}
                   className="h-full w-full object-cover"
                   preload="metadata"
+                  muted
                 />
               ) : (
                 <Image

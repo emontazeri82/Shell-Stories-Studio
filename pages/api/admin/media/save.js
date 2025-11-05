@@ -6,6 +6,8 @@ import { createAdminUploadHandler } from "@/lib/middleware/createAdminUploadHand
 import { requestDebugger } from "@/lib/middleware/requestDebugger";
 
 const handler = createAdminUploadHandler();
+console.log("[DEBUG] createAdminUploadHandler initialized at", new Date().toISOString());
+
 handler.use(requestDebugger({ logBodies: true, maxBody: 4000 }));
 
 const dbPath = path.join(process.cwd(), "data", "shells_shop.db");
@@ -24,6 +26,11 @@ handler.post(async (req, res) => {
   console.log("🔥 [media/save] Handler triggered!");
   console.log("🧠 productId (query):", req.query.productId);
   console.log("🧪 typeof req.body BEFORE parsing:", typeof req.body);
+  console.log(
+    "[DEBUG] handler stack:",
+    Object.keys(handler)
+  );
+  
 
   try {
     // ✅ 1️⃣ Always ensure JSON-parsed body
@@ -45,7 +52,7 @@ handler.post(async (req, res) => {
     }
 
     // ✅ 2️⃣ Extract productId + media array
-    const productId = Number(req.query.productId);
+    const productId = Number(req.query.productId ?? body.product_id ?? body.productId);
     const mediaArray = Array.isArray(body?.media) ? body.media : [];
 
     console.log("🧠 Parsed productId:", productId);
@@ -70,16 +77,20 @@ handler.post(async (req, res) => {
 
     let inserted = 0;
     for (const item of mediaArray) {
-      if (!item?.url || !item?.publicId) {
+      const url = item.url || item.secure_url;
+      const publicId = item.publicId || item.public_id;
+      const resourceType = item.resourceType || item.kind || "image";
+    
+      if (!url || !publicId) {
         console.warn("⚠️ Skipping incomplete record:", item);
         continue;
       }
-
+    
       await insertStmt.run([
         productId,
-        item.resourceType || "image",
-        item.publicId,
-        item.url,
+        resourceType,
+        publicId,
+        url,
         item.format,
         item.width || null,
         item.height || null,
@@ -88,8 +99,10 @@ handler.post(async (req, res) => {
         item.sort_order || 0,
         item.is_primary ? 1 : 0,
       ]);
+    
       inserted++;
     }
+    
 
     await insertStmt.finalize();
     console.log(`✅ Saved ${inserted} media entries for product ${productId}`);
@@ -107,6 +120,7 @@ handler.post(async (req, res) => {
     return res.status(500).json({ success: false, message: err.message || "Internal server error" });
   }
 });
+console.log("[DEBUG] Registered routes:", handler.router?.stack?.map(r => r.route?.path || r.name));
 
 export default handler;
 

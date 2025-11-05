@@ -1,7 +1,7 @@
-// hooks/useFavoritesRail.js
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "@/redux/slices/cartSlice";
 
@@ -27,57 +27,69 @@ export function useFavoritesRail(
   // --- State
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [visible, setVisible] = useState([]);   // rendered window
-  const [pool, setPool] = useState([]);         // off-screen candidates
+  const [visible, setVisible] = useState([]); // rendered window
+  const [pool, setPool] = useState([]); // off-screen candidates
   const [toast, setToast] = useState(null);
 
-  // --- Refs (avoid stale closures)
+  // --- Refs
   const visibleRef = useRef([]);
   const poolRef = useRef([]);
   const toastTimerRef = useRef(null);
   const replenishingRef = useRef(false);
 
-  useEffect(() => { visibleRef.current = visible; }, [visible]);
-  useEffect(() => () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }, []);
+  useEffect(() => {
+    visibleRef.current = visible;
+  }, [visible]);
 
-  // --- Fetch helper (sanitized; uses exclude/minStock/random/limit)
-  const fetchFavorites = useCallback(async (opts = {}) => {
-    const { limit = fetchLimit, random = false, minStock = 1 } = opts;
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
-    const params = new URLSearchParams();
-    params.set("limit", String(clampInt(limit, 1, 50)));
-    params.set("minStock", String(Math.max(0, minStock)));
-    if (random) params.set("random", "1");
+  // ────────────────────────────────
+  // Fetch favorites (Axios version)
+  // ────────────────────────────────
+  const fetchFavorites = useCallback(
+    async (opts = {}) => {
+      const { limit = fetchLimit, random = false, minStock = 1 } = opts;
 
-    // exclude current visible + cart items
-    const exclude = new Set([
-      ...visibleRef.current.map((v) => v.id),
-      ...Array.from(cartIds),
-    ]);
-    if (exclude.size) params.set("exclude", Array.from(exclude).join(","));
+      const params = new URLSearchParams();
+      params.set("limit", String(clampInt(limit, 1, 50)));
+      params.set("minStock", String(Math.max(0, minStock)));
+      if (random) params.set("random", "1");
 
-    const controller = new AbortController();
-    try {
-      const res = await fetch(`/api/products/favorites?${params}`, {
-        signal: controller.signal,
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      return Array.isArray(data?.items) ? data.items : [];
-    } finally {
-      // abort to tidy up lingering fetch in dev/HMR
-      controller.abort();
-    }
-  }, [cartIds, fetchLimit]);
+      // exclude current visible + cart items
+      const exclude = new Set([
+        ...visibleRef.current.map((v) => v.id),
+        ...Array.from(cartIds),
+      ]);
+      if (exclude.size) params.set("exclude", Array.from(exclude).join(","));
 
-  // --- Initial load
+      const url = `/api/products/favorites?${params.toString()}`;
+      console.log("[Axios] Calling:", url);
+
+      try {
+        const { data } = await axios.get(url, { timeout: 10000 });
+        return Array.isArray(data?.items) ? data.items : [];
+      } catch (err) {
+        console.error("[Axios] Error at:", url, err);
+        throw err;
+      }
+    },
+    [cartIds, fetchLimit]
+  );
+
+  // ────────────────────────────────
+  // Initial load
+  // ────────────────────────────────
   useEffect(() => {
     let alive = true;
     (async () => {
       setLoading(true);
       setError(null);
       try {
-        // pass 1: ordered (not random), then score client-side
+        // First pass: ordered fetch
         const items = await fetchFavorites({ random: false });
         if (!alive) return;
 
@@ -93,7 +105,7 @@ export function useFavoritesRail(
         setPool(rest);
         poolRef.current = rest;
 
-        // top up if fewer than windowSize
+        // Top up if fewer than windowSize
         if (initial.length < windowSize) {
           const more = await fetchFavorites({ random: true, limit: fetchLimit });
           if (!alive) return;
@@ -111,23 +123,27 @@ export function useFavoritesRail(
         }
       } catch (e) {
         if (alive) setError(e);
-        console.error("favorites init error", e);
+        console.error("[FavoritesRail] ❌ Init error:", e);
         setVisible([]); visibleRef.current = [];
-        setPool([]);    poolRef.current = [];
+        setPool([]); poolRef.current = [];
       } finally {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [fetchFavorites, cartCats, windowSize, fetchLimit]);
 
-  // --- Ensure we have windowSize visible (fill from pool then replenish once)
+  // ────────────────────────────────
+  // Ensure we have windowSize visible
+  // ────────────────────────────────
   const ensureFill = useCallback(async () => {
     let changed = false;
     let vis = [...visibleRef.current];
     let poolArr = [...poolRef.current];
 
-    // 1) fill from pool
+    // 1️⃣ Fill from pool
     const used = new Set([...vis.map((v) => v.id), ...Array.from(cartIds)]);
     while (vis.length < windowSize && poolArr.length) {
       const idx = poolArr.findIndex((p) => !used.has(p.id));
@@ -137,38 +153,45 @@ export function useFavoritesRail(
       used.add(pick.id);
       changed = true;
     }
+
     if (changed) {
-      setVisible(vis); visibleRef.current = vis;
-      setPool(poolArr); poolRef.current = poolArr;
+      setVisible(vis);
+      visibleRef.current = vis;
+      setPool(poolArr);
+      poolRef.current = poolArr;
     }
 
-    // 2) still short? try replenish once
+    // 2️⃣ Replenish if still short
     if (vis.length < windowSize && !replenishingRef.current) {
       replenishingRef.current = true;
       try {
         const more = await fetchFavorites({ random: true, limit: fetchLimit });
         let poolNew = [...poolRef.current, ...more];
 
-        // de-dupe pool against visible + cart
-        const used2 = new Set([...visibleRef.current.map(v=>v.id), ...Array.from(cartIds)]);
+        const used2 = new Set([
+          ...visibleRef.current.map((v) => v.id),
+          ...Array.from(cartIds),
+        ]);
         poolNew = poolNew.filter((p) => !used2.has(p.id));
 
-        // shuffle for variety
         poolNew.sort(() => Math.random() - 0.5);
 
         setPool(poolNew);
         poolRef.current = poolNew;
 
-        // try filling again
+        // Try to fill again
         vis = [...visibleRef.current];
         let changed2 = false;
         while (vis.length < windowSize && poolNew.length) {
           vis.push(poolNew.shift());
           changed2 = true;
         }
+
         if (changed2) {
-          setVisible(vis); visibleRef.current = vis;
-          setPool(poolNew); poolRef.current = poolNew;
+          setVisible(vis);
+          visibleRef.current = vis;
+          setPool(poolNew);
+          poolRef.current = poolNew;
         }
       } finally {
         replenishingRef.current = false;
@@ -176,7 +199,9 @@ export function useFavoritesRail(
     }
   }, [cartIds, fetchFavorites, fetchLimit, windowSize]);
 
-  // --- Prune when cart changes, then refill
+  // ────────────────────────────────
+  // Handle cart changes (prune + refill)
+  // ────────────────────────────────
   useEffect(() => {
     setVisible((curr) => {
       const next = curr.filter((p) => !cartIds.has(p.id));
@@ -191,59 +216,70 @@ export function useFavoritesRail(
     void ensureFill();
   }, [cartIds, ensureFill]);
 
-  // --- Add to cart + replace safely, then ensureFill
-  const addAndReplace = useCallback((product, requestedIndex) => {
-    // optimistic add
-    dispatch(addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image_url: product.image_url,
-      quantity: 1,
-      stock: product.stock,
-      description: product.description,
-      category: product.category,
-    }));
+  // ────────────────────────────────
+  // Add to cart + replace
+  // ────────────────────────────────
+  const addAndReplace = useCallback(
+    (product, requestedIndex) => {
+      dispatch(
+        addToCart({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image_url: product.image_url,
+          quantity: 1,
+          stock: product.stock,
+          description: product.description,
+          category: product.category,
+        })
+      );
 
-    // toast
-    setToast({ name: product.name });
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), TOAST_MS);
+      // toast
+      setToast({ name: product.name });
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => setToast(null), TOAST_MS);
 
-    // replace by id (robust to prune/index shifts)
-    setVisible((curr) => {
-      const list = [...curr];
-      let idx = list.findIndex((x) => x.id === product.id);
-      if (idx === -1) {
-        idx = Math.min(Math.max(0, requestedIndex ?? list.length - 1), list.length - 1);
-        if (list.length === 0) {
-          void ensureFill();
-          return list;
+      // replace in visible
+      setVisible((curr) => {
+        const list = [...curr];
+        let idx = list.findIndex((x) => x.id === product.id);
+        if (idx === -1) {
+          idx = Math.min(
+            Math.max(0, requestedIndex ?? list.length - 1),
+            list.length - 1
+          );
+          if (list.length === 0) {
+            void ensureFill();
+            return list;
+          }
         }
-      }
 
-      const usedIds = new Set(list.map((x) => x.id));
-      usedIds.add(product.id);
+        const usedIds = new Set(list.map((x) => x.id));
+        usedIds.add(product.id);
 
-      const available = poolRef.current.filter((x) => !usedIds.has(x.id));
-      if (available.length) {
-        const pick = available[Math.floor(Math.random() * available.length)];
-        list.splice(idx, 1, pick);
-        const nextPool = poolRef.current.filter((x) => x.id !== pick.id);
-        poolRef.current = nextPool;
-        setPool(nextPool);
-      } else {
-        // temporarily shrink; ensureFill will refill
-        list.splice(idx, 1);
-      }
+        const available = poolRef.current.filter((x) => !usedIds.has(x.id));
+        if (available.length) {
+          const pick = available[Math.floor(Math.random() * available.length)];
+          list.splice(idx, 1, pick);
+          const nextPool = poolRef.current.filter((x) => x.id !== pick.id);
+          poolRef.current = nextPool;
+          setPool(nextPool);
+        } else {
+          // temporarily shrink, ensureFill will top up
+          list.splice(idx, 1);
+        }
 
-      visibleRef.current = list;
-      void ensureFill();
-      return list;
-    });
-  }, [dispatch, ensureFill]);
+        visibleRef.current = list;
+        void ensureFill();
+        return list;
+      });
+    },
+    [dispatch, ensureFill]
+  );
 
-  // --- If pool changes and we're short, top up
+  // ────────────────────────────────
+  // Auto-fill if pool changes
+  // ────────────────────────────────
   useEffect(() => {
     if (!loading && visibleRef.current.length < windowSize) {
       void ensureFill();

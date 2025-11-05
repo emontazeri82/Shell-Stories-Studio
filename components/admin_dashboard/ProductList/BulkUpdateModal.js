@@ -1,98 +1,136 @@
-// components/admin_dashboard/ProductList/BulkUpdateModal.js
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
+"use client";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import axios from "axios";
 
-const CLOUD_NAME = 'dr5v7f0wd';
-const UPLOAD_PRESET = 'unsigned_upload';
+const CLOUD_NAME = "dr5v7f0wd";
+const UPLOAD_PRESET = "unsigned_upload";
 
 export default function BulkUpdateModal({ isOpen, onClose, onSave, field }) {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState("");
 
-  // Friendly label
-  const fieldLabel = useMemo(() => ({
-    price: 'Price',
-    category: 'Category',
-    description: 'Description',
-    image: 'Image',
-    favorite: 'Favorite',
-    stock: 'Stock',
-  }[field] ?? field), [field]);
+  // ────────────────────────────────
+  // Friendly label mapping
+  // ────────────────────────────────
+  const fieldLabel = useMemo(
+    () =>
+      ({
+        price: "Price",
+        category: "Category",
+        description: "Description",
+        image: "Image",
+        favorite: "Favorite",
+        stock: "Stock",
+      }[field] ?? field),
+    [field]
+  );
 
-  // Reset inputs when field changes / modal re-opens
+  // ────────────────────────────────
+  // Reset state on modal open/close
+  // ────────────────────────────────
   useEffect(() => {
-    setValue('');
-    setImageUrl('');
+    setValue("");
+    setImageUrl("");
     setUploading(false);
   }, [field, isOpen]);
 
+  // ────────────────────────────────
+  // Cloudinary upload handler
+  // ────────────────────────────────
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     if (file.size > 10 * 1024 * 1024) {
-      alert('File too large (max 10MB)');
+      alert("File too large (max 10MB)");
       return;
     }
 
     setUploading(true);
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', UPLOAD_PRESET);
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET);
 
     try {
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-        method: 'POST',
-        body: formData,
+      const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+      console.log("[Axios] Calling:", url);
+
+      const { data } = await axios.post(url, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
+
+      console.log("[Cloudinary] ✅ Upload success:", data.secure_url);
       setImageUrl(data.secure_url);
     } catch (err) {
-      console.error('❌ Upload failed:', err);
-      alert('Image upload failed');
+      console.error("[Axios] Error at Cloudinary upload:", err);
+      alert("❌ Image upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
   };
 
-  const isNumberField = field === 'price' || field === 'stock';
-  const isImageField = field === 'image';
-  const isFavoriteField = field === 'favorite';
-  const isCategoryField = field === 'category';
+  // ────────────────────────────────
+  // Field type detection
+  // ────────────────────────────────
+  const isNumberField = field === "price" || field === "stock";
+  const isImageField = field === "image";
+  const isFavoriteField = field === "favorite";
+  const isCategoryField = field === "category";
 
+  // ────────────────────────────────
+  // Validation
+  // ────────────────────────────────
   const canSave = (() => {
     if (uploading) return false;
     if (isImageField) return Boolean(imageUrl);
-    if (isFavoriteField) return value === '0' || value === '1';
-    if (isNumberField) return value !== '' && !Number.isNaN(Number(value));
+    if (isFavoriteField) return value === "0" || value === "1";
+    if (isNumberField) return value !== "" && !Number.isNaN(Number(value));
     return value.trim().length > 0;
   })();
 
+  // ────────────────────────────────
+  // Save handler
+  // ────────────────────────────────
   const handleSubmit = () => {
     if (!canSave) return;
 
-    // Normalize payload keys/values
-    let payload;
-    if (isImageField) {
-      payload = { image_url: imageUrl };
-    } else if (isFavoriteField) {
-      payload = { is_favorite: Number(value) === 1 ? 1 : 0 };
-    } else if (isNumberField) {
-      payload = { [field]: Number(value) };
-    } else {
-      payload = { [field]: value.trim() };
-    }
+    try {
+      console.log("[BulkUpdateModal] Preparing payload for:", field);
+      let payload;
 
-    onSave(payload);
-    setValue('');
-    setImageUrl('');
-    onClose();
+      if (isImageField) {
+        payload = { image_url: imageUrl };
+      } else if (isFavoriteField) {
+        payload = { is_favorite: Number(value) === 1 ? 1 : 0 };
+      } else if (isNumberField) {
+        payload = { [field]: Number(value) };
+      } else {
+        payload = { [field]: value.trim() };
+      }
+
+      console.log("[BulkUpdateModal] Payload ready:", payload);
+      onSave(payload);
+
+      setValue("");
+      setImageUrl("");
+      onClose();
+    } catch (err) {
+      console.error("[BulkUpdateModal] Error handling save:", err);
+      alert("Failed to save bulk update.");
+    }
   };
 
+  // ────────────────────────────────
+  // Render
+  // ────────────────────────────────
   return (
     <Transition show={isOpen} as={Fragment}>
-      <Dialog onClose={onClose} className="fixed z-50 inset-0 flex items-center justify-center">
+      <Dialog
+        onClose={onClose}
+        className="fixed z-50 inset-0 flex items-center justify-center"
+      >
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-200"
@@ -129,6 +167,7 @@ export default function BulkUpdateModal({ isOpen, onClose, onSave, field }) {
                   className="w-full mb-4"
                   disabled={uploading}
                 />
+
                 {imageUrl ? (
                   <img
                     src={imageUrl}
@@ -141,7 +180,9 @@ export default function BulkUpdateModal({ isOpen, onClose, onSave, field }) {
                   </div>
                 )}
 
-                {uploading && <p className="text-sm text-blue-600">Uploading…</p>}
+                {uploading && (
+                  <p className="text-sm text-blue-600">Uploading…</p>
+                )}
               </>
             ) : isFavoriteField ? (
               <select
@@ -164,7 +205,6 @@ export default function BulkUpdateModal({ isOpen, onClose, onSave, field }) {
                   <option value="floral">Floral</option>
                   <option value="bird">Bird</option>
                   <option value="decor">Decor</option>
-                  {/* still allows custom via textbox below */}
                 </select>
                 <input
                   type="text"
@@ -176,44 +216,39 @@ export default function BulkUpdateModal({ isOpen, onClose, onSave, field }) {
               </>
             ) : (
               <input
-                type={isNumberField ? 'number' : 'text'}
+                type={isNumberField ? "number" : "text"}
                 placeholder={`Enter ${fieldLabel}`}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                className="w-full border p-2 rounded mb-1"
-                step={field === 'price' ? '0.01' : field === 'stock' ? '1' : undefined}
-                min={field === 'stock' ? 0 : undefined}
+                className="w-full border p-2 rounded mb-4"
               />
             )}
 
-            {/* Actions */}
-            <div className="flex justify-end gap-2 mt-4">
+            {/* Footer buttons */}
+            <div className="flex justify-end gap-3 mt-4">
               <button
-                className="bg-gray-300 text-gray-800 px-4 py-2 rounded"
+                type="button"
+                className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
                 onClick={onClose}
-                disabled={uploading}
               >
                 Cancel
               </button>
               <button
-                className="bg-blue-600 text-white px-4 py-2 rounded disabled:bg-blue-300"
+                type="button"
+                className={`px-4 py-2 rounded text-white ${
+                  canSave
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-gray-400 cursor-not-allowed"
+                }`}
                 onClick={handleSubmit}
                 disabled={!canSave}
               >
                 Save
               </button>
             </div>
-
-            {/* Hints */}
-            {isFavoriteField && (
-              <p className="text-xs text-gray-500 mt-2">
-                Note: You can have up to 8 favorites. If you try to mark more, only the first available will be applied.
-              </p>
-            )}
           </Dialog.Panel>
         </Transition.Child>
       </Dialog>
     </Transition>
   );
 }
-
