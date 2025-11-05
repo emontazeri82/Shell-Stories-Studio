@@ -1,66 +1,114 @@
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/router';
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/router";
 
+/* ──────────────────────────────
+ * Admin Login Page
+ * ──────────────────────────────*/
 export default function AdminLogin() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { data: session, status } = useSession();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    setLoading(true);
-    setError('');
-    const res = await signIn('credentials', {
-      redirect: false,
-      email,     // ✅ now using state
-      password,  // ✅ now using state
-    });
+  const callbackUrl = router.query.callbackUrl || "/admin";
 
-    if (res.ok) {
-      router.push('/admin');
-    } else {
-      setError('❌ Invalid credentials');
+  // ✅ Redirect if already logged in
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role === "ADMIN") {
+      router.replace(callbackUrl);
     }
-    setLoading(false);
+  }, [status, session, router, callbackUrl]);
+
+  // ────────────────────────────────
+  // Login Handler
+  // ────────────────────────────────
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+        callbackUrl,
+      });
+
+      if (!res) {
+        setError("Unexpected response from server.");
+        return;
+      }
+
+      if (res.ok) {
+        console.log("✅ Login successful. Redirecting...");
+        router.push(callbackUrl);
+      } else {
+        setError("❌ Invalid credentials. Please try again.");
+      }
+    } catch (err) {
+      console.error("💥 Login failed:", err);
+      setError("Network or server error. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // ────────────────────────────────
+  // UI Rendering
+  // ────────────────────────────────
   return (
-    <div className="max-w-sm mx-auto mt-20 p-6 border rounded shadow font-poppins">
-      <h1 className="text-xl font-bold mb-4 text-center">🔐 Admin Login</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-poppins">
+      <div className="max-w-sm w-full bg-white shadow-lg rounded-lg p-6 border border-gray-200">
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">
+          🔐 Admin Login
+        </h1>
 
-      <input
-        type="email"
-        className="border p-2 w-full rounded mb-3"
-        placeholder="Enter admin email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-      />
+        <input
+          type="email"
+          className="border p-2 w-full rounded mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="Enter admin email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+        />
 
-      <input
-        type="password"
-        className="border p-2 w-full rounded"
-        placeholder="Enter admin password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-      />
+        <input
+          type="password"
+          className="border p-2 w-full rounded mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="Enter admin password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+        />
 
-      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+        {error && (
+          <p className="text-red-500 text-sm mt-2 text-center">{error}</p>
+        )}
 
-      <button
-        onClick={handleLogin}
-        disabled={loading}
-        className="mt-4 w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
-      >
-        {loading ? 'Logging in...' : 'Login'}
-      </button>
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          className={`mt-4 w-full bg-indigo-600 text-white py-2 rounded-md transition 
+            ${loading ? "opacity-50 cursor-not-allowed" : "hover:bg-indigo-700"}`}
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+
+        <p className="text-center text-xs text-gray-500 mt-4">
+          Only authorized admins can access this area.
+        </p>
+      </div>
     </div>
   );
 }
-
 
 
 

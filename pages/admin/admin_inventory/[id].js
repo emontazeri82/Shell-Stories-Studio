@@ -1,12 +1,12 @@
-// pages/admin/admin_inventory/[id].js
-import { useRouter } from 'next/router';
-import ProductForm from '@/components/admin_dashboard/product_form/ProductForm';
+// /pages/admin/admin_inventory/[id].js
+import { useRouter } from "next/router";
+import ProductForm from "@/components/admin_dashboard/product_form/ProductForm";
 
 export default function EditProductPage() {
   const router = useRouter();
   const { id } = router.query;
 
-  // Show loading while the ID is not yet available
+  // While waiting for the router to populate `id`
   if (!id) {
     return (
       <div className="p-8 text-gray-600">
@@ -15,7 +15,7 @@ export default function EditProductPage() {
     );
   }
 
-  // Defensive check for non-numeric IDs (if you're using numeric IDs)
+  // Defensive numeric check
   if (isNaN(Number(id))) {
     return (
       <div className="p-8 text-red-600">
@@ -24,6 +24,7 @@ export default function EditProductPage() {
     );
   }
 
+  // ✅ Only pass productId; ProductForm handles fetching and media logic itself
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-4">Edit Product</h1>
@@ -31,4 +32,5 @@ export default function EditProductPage() {
     </div>
   );
 }
+
 

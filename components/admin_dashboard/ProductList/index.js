@@ -1,25 +1,17 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useDispatch } from 'react-redux';
+"use client";
 
-import { fetchProducts } from '@/lib/adminApi/productFetchers';
-import { deleteProduct } from '@/lib/adminApi/productActions';
-import { toggleActiveStatus } from '@/lib/adminApi/activationToggle';
-import { toggleFavorite } from '@/lib/adminApi/favoriteToggle';
+import React, { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDispatch } from "react-redux";
+import axios from "axios";
 
-import { upsertProductsInStore } from '@/redux/slices/productsSlice';
-import { ADMIN_FAVORITES_MAX } from '@/lib/constant';
+import { upsertProductsInStore } from "@/redux/slices/productsSlice";
+import { ADMIN_FAVORITES_MAX } from "@/lib/constant";
 
-import BulkActions from './BulkActions';
-import BulkUpdateModal from './BulkUpdateModal';
-import ProductTable from './ProductTable';
+import BulkActions from "./BulkActions";
+import BulkUpdateModal from "./BulkUpdateModal";
+import ProductTable from "./ProductTable";
 
-/**
- * ProductList component:
- * - Fetches all products
- * - Handles deletion, bulk updates, and favorite toggles
- * - Uses React Query for caching + Redux for cross-page sync
- */
 export default function ProductList({ searchQuery, sortOrder }) {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
@@ -29,15 +21,29 @@ export default function ProductList({ searchQuery, sortOrder }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updateField, setUpdateField] = useState(null);
 
-  // ✅ Memoize query key for consistency
-  const queryKey = useMemo(() => ['products', { sortOrder, q: searchQuery || '' }], [sortOrder, searchQuery]);
+  // ✅ Memoized query key
+  const queryKey = useMemo(
+    () => ["products", { sortOrder, q: searchQuery || "" }],
+    [sortOrder, searchQuery]
+  );
 
   // ────────────────────────────────
-  // Fetch products
+  // Fetch products (using Axios)
   // ────────────────────────────────
   const { data, error, isLoading } = useQuery({
     queryKey,
-    queryFn: () => fetchProducts({ sortOrder, q: searchQuery }),
+    queryFn: async () => {
+      try {
+        // ✅ AXIOS_URL: /api/admin/manage_products
+        const url = `/api/admin/manage_products?q=${searchQuery || ""}&sort=${sortOrder || ""}`;
+        console.log("[Axios] Calling:", url);
+        const { data } = await axios.get(url);
+        return data;
+      } catch (err) {
+        console.error("[Axios] Error at:", "/api/admin/manage_products", err);
+        throw err;
+      }
+    },
     refetchOnWindowFocus: false,
     keepPreviousData: true,
   });
@@ -45,10 +51,24 @@ export default function ProductList({ searchQuery, sortOrder }) {
   const products = data?.products || [];
 
   // ────────────────────────────────
-  // Delete product mutation
+  // Delete product (Axios)
   // ────────────────────────────────
   const deleteMutation = useMutation({
-    mutationFn: deleteProduct,
+    mutationFn: async (id) => {
+      try {
+        // ✅ AXIOS_URL: /api/admin/manage_products/${id}
+        console.log("[Axios] Calling:", `/api/admin/manage_products/${id}`);
+        const { data } = await axios.delete(`/api/admin/manage_products/${id}`);
+        if (!data.success) {
+          throw new Error(data.error || data.message || "Failed to delete product");
+        }
+        console.log("[Axios] ✅ Deleted product:", id);
+        return data;
+      } catch (err) {
+        console.error("[Axios] Error at:", `/api/admin/manage_products/${id}`, err);
+        throw err;
+      }
+    },
     onMutate: async (deletedId) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
@@ -60,64 +80,149 @@ export default function ProductList({ searchQuery, sortOrder }) {
     },
     onError: (err, _, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      alert(err.message || 'Failed to delete product');
+      alert(err.message || "Failed to delete product");
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   // ────────────────────────────────
-  // Toggle active mutation
-  // ────────────────────────────────
-  const toggleActiveMutation = useMutation({
-    mutationFn: toggleActiveStatus,
-    onMutate: async ({ id, isActive }) => {
-      await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData(queryKey);
-
-      queryClient.setQueryData(queryKey, (old) => ({
-        ...old,
-        products: old?.products?.map((p) =>
-          p.id === id ? { ...p, is_active: isActive } : p
-        ) || [],
-      }));
-
-      return { previous };
-    },
-    onError: (err, _, context) => {
-      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      console.error('❌ Activation toggle failed:', err);
-      alert(err.message || 'Failed to toggle activation');
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-  });
-
-  // ────────────────────────────────
-  // Toggle favorite mutation
+  // Toggle active status (Axios)
   // ────────────────────────────────
   const toggleFavoriteMutation = useMutation({
-    mutationFn: toggleFavorite,
+    mutationFn: async ({ id, isFavorite }) => {
+      // ✅ AXIOS_URL: /api/admin/manage_products/favorite
+      const url = `/api/admin/manage_products/favorite`;
+      console.log("[Axios] Calling:", url);
+      console.log("📦 Payload:", { productId: id, isFavorite: isFavorite ? 1 : 0 });
+
+      try {
+        const { data } = await axios.post(
+          url,
+          { productId: id, isFavorite: isFavorite ? 1 : 0 }, // ✅ matches sanitizer
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        if (!data?.ok) {
+          console.error("[Axios] ❌ Backend responded with error:", data);
+          throw new Error(data.error || "Failed to toggle favorite");
+        }
+
+        console.log("[Axios] ✅ Server response:", data);
+        return data;
+      } catch (err) {
+        console.error("[Axios] Error at:", url, err);
+        if (err.response) {
+          console.error("❌ Server responded with:", err.response.data);
+        }
+        throw new Error(err.response?.data?.error || err.message || "Network error");
+      }
+    },
+
+    // 🧠 Optimistic update — update UI immediately before server confirms
     onMutate: async ({ id, isFavorite }) => {
+      console.log("[React Query] ⚡ Optimistic toggle for id:", id, "→", isFavorite);
+      await queryClient.cancelQueries({ queryKey });
+
       const previous = queryClient.getQueryData(queryKey);
       queryClient.setQueryData(queryKey, (old) => ({
         ...old,
-        products: old?.products?.map((p) =>
-          p.id === id ? { ...p, is_favorite: isFavorite ? 1 : 0 } : p
-        ) || [],
+        products:
+          old?.products?.map((p) =>
+            p.id === id ? { ...p, is_favorite: isFavorite ? 1 : 0 } : p
+          ) || [],
       }));
+
       return { previous };
     },
+
+    // ❌ Rollback on error
     onError: (err, _, context) => {
-      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      alert(err.message || 'Failed to toggle favorite');
+      console.error("[React Query] ❌ Error toggling favorite:", err);
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      alert(err.message || "Failed to toggle favorite");
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+
+    // ✅ Refetch on success to sync state
+    onSuccess: (data) => {
+      console.log("[React Query] ✅ Favorite updated successfully:", data);
+      queryClient.invalidateQueries({ queryKey });
+    },
   });
 
   // ────────────────────────────────
-  // Bulk operations
+  // Toggle Active Status (Axios)
+  // ────────────────────────────────
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, isActive }) => {
+      // ✅ AXIOS_URL: /api/admin/manage_products/${id}
+      const url = `/api/admin/manage_products/${id}`;
+      console.log("[Axios] Calling:", url);
+      console.log("📦 Payload:", { is_active: isActive });
+
+      try {
+        const { data } = await axios.patch(
+          url,
+          { is_active: isActive ? 1 : 0 },
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        if (!(data?.ok || data?.success)) {
+          console.error("[Axios] ❌ Backend responded with error:", data);
+          throw new Error(data.error || "Failed to toggle active status");
+        }
+
+
+        console.log("[Axios] ✅ Server response:", data);
+        return data;
+      } catch (err) {
+        console.error("[Axios] Error at:", url, err);
+        if (err.response) {
+          console.error("❌ Server responded with:", err.response.data);
+        }
+        throw new Error(err.response?.data?.error || err.message || "Network error");
+      }
+    },
+
+    // 🧠 Optimistic UI update
+    onMutate: async ({ id, isActive }) => {
+      console.log("[React Query] ⚡ Optimistic toggle active for id:", id, "→", isActive);
+      await queryClient.cancelQueries({ queryKey });
+
+      const previous = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (old) => ({
+        ...old,
+        products:
+          old?.products?.map((p) =>
+            p.id === id ? { ...p, is_active: isActive ? 1 : 0 } : p
+          ) || [],
+      }));
+
+      return { previous };
+    },
+
+    // ❌ Rollback on error
+    onError: (err, _, context) => {
+      console.error("[React Query] ❌ Error toggling active:", err);
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      alert(err.message || "Failed to toggle active status");
+    },
+
+    // ✅ Refetch after success
+    onSuccess: (data) => {
+      console.log("[React Query] ✅ Active status updated successfully:", data);
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  // ────────────────────────────────
+  // Bulk Update / Delete (Axios)
   // ────────────────────────────────
   const handleBulkDelete = () => {
-    if (!selected.length) return alert('No products selected.');
+    if (!selected.length) return alert("No products selected.");
     if (confirm(`Delete ${selected.length} products?`)) {
       selected.forEach((id) => deleteMutation.mutate(id));
       setSelected([]);
@@ -138,7 +243,6 @@ export default function ProductList({ searchQuery, sortOrder }) {
     // Optimistic update
     await queryClient.cancelQueries({ queryKey });
     const previous = queryClient.getQueryData(queryKey);
-
     queryClient.setQueryData(queryKey, (old) => ({
       ...old,
       products: old.products.map((p) =>
@@ -147,21 +251,23 @@ export default function ProductList({ searchQuery, sortOrder }) {
     }));
 
     try {
+      // ✅ AXIOS_URL: /api/admin/manage_products/${id} (bulk PUT)
       await Promise.all(
         targetIds.map(async (id) => {
-          const res = await fetch(`/api/admin/manage_products/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ [field]: value }),
-          });
-          if (!res.ok) throw new Error(`Failed to update id=${id}`);
+          const url = `/api/admin/manage_products/${id}`;
+          console.log("[Axios] Calling:", url);
+          const { data } = await axios.put(url, { [field]: value });
+          if (!data.ok) throw new Error(`Failed to update id=${id}`);
         })
       );
 
-      dispatch(upsertProductsInStore(targetIds.map((id) => ({ id, [field]: value }))));
+      dispatch(
+        upsertProductsInStore(targetIds.map((id) => ({ id, [field]: value })))
+      );
       queryClient.invalidateQueries({ queryKey });
-      alert('Bulk update successful!');
+      alert("Bulk update successful!");
     } catch (err) {
+      console.error("[Axios] Error at:", `/api/admin/manage_products (bulk PUT)`, err);
       queryClient.setQueryData(queryKey, previous);
       alert(`Bulk update failed: ${err.message}`);
     } finally {
@@ -174,10 +280,14 @@ export default function ProductList({ searchQuery, sortOrder }) {
   // UI Handlers
   // ────────────────────────────────
   const handleToggleSelect = (id) =>
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
 
   const handleSelectAll = () =>
-    setSelected(selected.length === products.length ? [] : products.map((p) => p.id));
+    setSelected(
+      selected.length === products.length ? [] : products.map((p) => p.id)
+    );
 
   const toggleRow = (id) =>
     setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -189,7 +299,9 @@ export default function ProductList({ searchQuery, sortOrder }) {
   if (error) return <div className="text-red-600">Error loading products.</div>;
 
   const filteredProducts = searchQuery
-    ? products.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? products.filter((p) =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : products;
 
   return (
@@ -201,7 +313,9 @@ export default function ProductList({ searchQuery, sortOrder }) {
           selected={selected}
           onBulkDelete={handleBulkDelete}
           onBulkActivate={(isActive) =>
-            selected.forEach((id) => toggleActiveMutation.mutate({ id, isActive }))
+            selected.forEach((id) =>
+              toggleActiveMutation.mutate({ id, isActive })
+            )
           }
           onBulkUpdate={handleBulkUpdate}
         />
@@ -218,7 +332,7 @@ export default function ProductList({ searchQuery, sortOrder }) {
           toggleFavoriteMutation.mutate({ id, isFavorite: !isFavorite })
         }
         onToggleRow={toggleRow}
-        toggleActiveMutation={toggleActiveMutation}
+        toggleActiveMutation={toggleActiveMutation.mutate}  // ✅ pass mutate directly
       />
 
       <BulkUpdateModal
@@ -227,8 +341,10 @@ export default function ProductList({ searchQuery, sortOrder }) {
         onSave={handleModalSave}
         field={updateField}
       />
+
     </div>
   );
 }
+
 
 
