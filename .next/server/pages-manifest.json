@@ -2,7 +2,6 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/admin/admin_inventory": "pages/admin/admin_inventory.js",
   "/products": "pages/products.js",
-  "/[...catchAll]": "pages/[...catchAll].js"
+  "/admin/admin_inventory": "pages/admin/admin_inventory.js"
 }

@@ -17,6 +17,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { usePersistentCart } from "@/hooks/usePersistentCart";
+import { SessionProvider } from "next-auth/react";
 
 const queryClient = new QueryClient();
 
@@ -25,7 +26,7 @@ function PersistentCartProvider({ children }) {
   return children;
 }
 
-function App({ Component, pageProps }) {
+function App({ Component, pageProps: { session, ...pageProps } }) {
   return (
     <div
       className={`
@@ -33,19 +34,21 @@ function App({ Component, pageProps }) {
         ${merriweather.variable} ${josefin.variable}
       `}
     >
-      <Provider store={store}>
-        <QueryClientProvider client={queryClient}>
-          <ThemeApplier>
-            <ErrorBoundary>
-              <AppInitializer />
-              <PersistentCartProvider>
-                <Component {...pageProps} />
-              </PersistentCartProvider>
-              <Toaster position="top-right" />
-            </ErrorBoundary>
-          </ThemeApplier>
-        </QueryClientProvider>
-      </Provider>
+      <SessionProvider session={session}>
+        <Provider store={store}>
+          <QueryClientProvider client={queryClient}>
+            <ThemeApplier>
+              <ErrorBoundary>
+                <AppInitializer />
+                <PersistentCartProvider>
+                  <Component {...pageProps} />
+                </PersistentCartProvider>
+                <Toaster position="top-right" />
+              </ErrorBoundary>
+            </ThemeApplier>
+          </QueryClientProvider>
+        </Provider>
+      </SessionProvider>
     </div>
   );
 }

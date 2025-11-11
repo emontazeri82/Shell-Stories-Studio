@@ -11,7 +11,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  transition: all;
+  transition: none;
 }
 
 body {
@@ -42,9 +42,10 @@ body {
   animation: waveScroll 12s linear infinite;
 }
 img {
-  image-rendering: pixelated;
-  display: block;
+  image-rendering: auto; /* or remove entirely */
+  display: inline-block; /* allows proper aspect-fit when using object-contain */
 }
+
 @keyframes expandWindow {
   0% {
     transform: scale(0);
@@ -71,5 +72,17 @@ img {
 #favorite-image {
   scroll-margin-top: 20vh; /* adjust as needed */
 }
+video {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
 
+@keyframes shadowPulse {
+  0%, 100% { box-shadow: 0 4px 40px rgba(0,0,0,0.3); }
+  50% { box-shadow: 0 4px 50px rgba(0,0,0,0.45); }
+}
+.shadow-breath {
+  animation: shadowPulse 6s ease-in-out infinite;
+}
 

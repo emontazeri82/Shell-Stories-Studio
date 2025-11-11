@@ -8,6 +8,35 @@ import { addToCart, openCart } from "@/redux/slices/cartSlice";
 import { useClickOutside } from "@/components/useClickOutside";
 import ProductGallery from "../ProductGallery";
 
+// ────────────────────────────────
+// 💫 Additional Global Enhancements
+// ────────────────────────────────
+const gradientAnimationCSS = `
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+.animate-gradient-x {
+  animation: gradient-x 6s ease infinite;
+}
+
+@keyframes shadowPulse {
+  0%, 100% { box-shadow: 0 4px 40px rgba(0,0,0,0.3); }
+  50% { box-shadow: 0 4px 55px rgba(0,0,0,0.45); }
+}
+.shadow-breath {
+  animation: shadowPulse 6s ease-in-out infinite;
+}
+`;
+
+// Inject once into the document head
+if (typeof window !== "undefined" && !document.getElementById("boutique-styles")) {
+  const style = document.createElement("style");
+  style.id = "boutique-styles";
+  style.innerHTML = gradientAnimationCSS;
+  document.head.appendChild(style);
+}
+
 function ProductCard({ product, onClose }) {
   // ────────────────────────────────
   // Safety checks
@@ -122,10 +151,22 @@ function ProductCard({ product, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.15 }}
-        className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-md"
+        transition={{ duration: 0.25 }}
+        className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 
+           backdrop-blur-md backdrop-saturate-150 
+           bg-[radial-gradient(ellipse_at_top,rgba(17,17,17,0.7),rgba(0,0,0,0.9))]"
         role="dialog"
         aria-modal="true"
+        onMouseMove={(e) => {
+          const x = (e.clientX / window.innerWidth - 0.5) * 8;
+          const y = (e.clientY / window.innerHeight - 0.5) * 8;
+          e.currentTarget.style.backgroundPosition = `${50 + x}% ${50 + y}%`;
+        }}
+        style={{
+          backgroundSize: "200% 200%",
+          backgroundImage:
+            "radial-gradient(ellipse at top, rgba(17,17,17,0.7), rgba(0,0,0,0.9))",
+        }}
       >
         <FocusLock returnFocus>
           <motion.div
@@ -134,10 +175,13 @@ function ProductCard({ product, onClose }) {
             initial={{ opacity: 0, y: 20, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
+            transition={{ type: "spring", stiffness: 220, damping: 20 }}
             className="relative grid grid-cols-1 md:grid-cols-2 max-w-3xl w-full gap-8 p-6 rounded-2xl
-              shadow-2xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border border-gray-200/30 dark:border-gray-700/30
-              overflow-hidden"
+              bg-gradient-to-br from-white/90 via-zinc-50/80 to-white/70 
+              dark:from-gray-900/90 dark:via-zinc-800/90 dark:to-gray-900/85 
+              border border-white/20 dark:border-gray-800/60 
+              shadow-[0_4px_40px_rgba(0,0,0,0.3)] backdrop-blur-2xl 
+              transition-all duration-500 hover:shadow-[0_4px_50px_rgba(0,0,0,0.5)] shadow-breath"
           >
             {/* Close button */}
             <button
@@ -148,13 +192,15 @@ function ProductCard({ product, onClose }) {
               ×
             </button>
 
-            {/* Gallery */}
-            <div className="relative">
+            <div className="relative rounded-2xl overflow-hidden 
+                bg-gradient-to-br from-zinc-100 via-zinc-200 to-zinc-50 
+                dark:from-zinc-800 dark:via-zinc-700 dark:to-zinc-800 
+                shadow-lg transition-all duration-500 hover:shadow-2xl">
               <ProductGallery media={galleryMedia} productName={product.name} />
               <span
                 className={`absolute top-3 left-3 text-white text-xs font-semibold px-3 py-1 rounded-full shadow
                   backdrop-blur-sm ring-1 ring-white/20
-                  ${inStock ? "bg-emerald-600/90" : "bg-zinc-700/90"}`}
+                  ${inStock ? "bg-emerald-600/90 animate-pulse" : "bg-zinc-700/90"}`}
               >
                 {inStock ? "In Stock" : "Out of Stock"}
               </span>
@@ -228,8 +274,8 @@ function ProductCard({ product, onClose }) {
                         <span className={`absolute inset-0 rounded-full ${inStock ? "bg-amber-400" : "bg-rose-400"}`} />
                         <span
                           className={`absolute inset-0 rounded-full ${inStock
-                              ? "animate-ping opacity-[0.35] bg-amber-400"
-                              : "animate-ping opacity-[0.35] bg-rose-400"
+                            ? "animate-ping opacity-[0.35] bg-amber-400"
+                            : "animate-ping opacity-[0.35] bg-rose-400"
                             }`}
                         />
                       </span>
@@ -269,7 +315,7 @@ function ProductCard({ product, onClose }) {
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
                       whileTap={{ scale: 0.95 }}
-                      className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-transform shadow-lg disabled:opacity-50"
+                      className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-[length:200%_auto] animate-gradient-x text-white font-semibold transition-transform shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50"
                       autoFocus
                     >
                       🛒 Add to Cart
@@ -286,7 +332,7 @@ function ProductCard({ product, onClose }) {
                       <motion.button
                         onClick={handleGoToCart}
                         whileTap={{ scale: 0.95 }}
-                        className="px-6 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold transition-transform shadow-lg"
+                        className="px-6 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold transition-transform shadow-md hover:shadow-lg hover:-translate-y-0.5"
                       >
                         ✅ Go to Cart
                       </motion.button>
@@ -294,7 +340,7 @@ function ProductCard({ product, onClose }) {
                         onClick={handleContinueShopping}
                         whileTap={{ scale: 0.95 }}
                         className="px-6 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600
-                          text-gray-800 dark:text-gray-200 font-semibold transition-transform"
+                          text-gray-800 dark:text-gray-200 font-semibold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
                       >
                         🛍️ Continue Shopping
                       </motion.button>

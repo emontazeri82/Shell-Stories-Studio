@@ -37,6 +37,7 @@
     "next": "^15.5.6",
     "next-auth": "^4.24.11",
     "next-connect": "^0.13.0",
+    "plyr-react": "^5.3.0",
     "react": "^19.2.0",
     "react-background-video-player": "^1.1.8",
     "react-dom": "^19.2.0",

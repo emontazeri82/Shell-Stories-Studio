@@ -16,6 +16,22 @@ export default function ProductMediaManager({ productId, onSaved, onMediaChange 
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UNSIGNED_PRESET;
 
+  // ✅ Save media to database after successful upload
+  async function saveMediaToDB(productId, mediaArray) {
+    try {
+      const url = `/api/admin/media/save?productId=${productId}`;
+      console.log("[Axios] Calling:", url);
+
+      const response = await axios.post(url, { media: mediaArray });
+
+      console.log("[Axios] ✅ Media saved to DB:", response.data);
+      return response.data;
+    } catch (err) {
+      console.error("[Axios] ❌ Failed to save media:", err);
+      throw err;
+    }
+  }
+
   // ────────────────────────────────
   // Cleanup when unmounting
   // ────────────────────────────────
@@ -57,8 +73,7 @@ export default function ProductMediaManager({ productId, onSaved, onMediaChange 
 
       if (invalid.length > 0) {
         alert(
-          `Some files are invalid (max ${
-            maxSizeBytes / (1024 * 1024)
+          `Some files are invalid (max ${maxSizeBytes / (1024 * 1024)
           } MB, allowed: ${allowedTypes.join(", ")}): ${invalid
             .map((f) => f.name)
             .join(", ")}`
@@ -143,13 +158,27 @@ export default function ProductMediaManager({ productId, onSaved, onMediaChange 
       console.log(`[Upload] Uploaded: ${uploaded.length}, Failed: ${failed.length}`);
 
       if (uploaded.length > 0) {
-        console.log("✅ Upload batch complete. Passing to parent onMediaChange...");
+        console.log("✅ Upload batch complete. Saving to database...");
+      
+        try {
+          if (productId) {
+            await saveMediaToDB(productId, uploaded);
+            console.log("✅ Media saved successfully in DB for product", productId);
+          } else {
+            console.warn("⚠️ No productId provided — skipping DB save.");
+          }
+        } catch (err) {
+          console.error("❌ Error saving media to DB:", err);
+        }
+      
+        // Keep UI updated
         onMediaChange?.(uploaded);
         setPhase("done");
       } else {
         console.warn("[Upload] No successful uploads to save.");
         setPhase("idle");
       }
+      
 
       abortControllerRef.current = null;
       if (e.target) e.target.value = "";

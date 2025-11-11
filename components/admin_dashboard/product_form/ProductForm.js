@@ -20,6 +20,8 @@ export default function ProductForm({ productId }) {
   const [pendingMedia, setPendingMedia] = useState([]);
   const [loadingProduct, setLoadingProduct] = useState(!!productId);
   const [loadingMedia, setLoadingMedia] = useState(!!productId);
+  const [isDeletingMedia, setIsDeletingMedia] = useState(false);
+
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm();
 
@@ -140,6 +142,10 @@ export default function ProductForm({ productId }) {
   // Submit Handler
   // ────────────────────────────────
   async function onSubmit(formData) {
+    if (isDeletingMedia) {
+      console.warn("[Form] ⛔ Ignoring submit during media deletion");
+      return;
+    }
     try {
       const payload = { ...formData };
       if (derivedImageUrl) payload.image_url = derivedImageUrl;
@@ -183,7 +189,7 @@ export default function ProductForm({ productId }) {
 
         setPendingMedia([]);
       }
-
+      
       router.push("/admin/admin_inventory");
     } catch (err) {
       console.error("[Axios] Error during form submit:", err);
@@ -195,6 +201,7 @@ export default function ProductForm({ productId }) {
   // ────────────────────────────────
   async function handleDeleteMedia(mediaItem) {
     if (!mediaItem?.public_id) return;
+    setIsDeletingMedia(true); // 🚫 Prevent side effects during deletion
 
     try {
       console.log("[Media] Deleting:", mediaItem.public_id);
@@ -210,9 +217,11 @@ export default function ProductForm({ productId }) {
       }
     } catch (err) {
       console.error("[Axios] Error deleting media:", err);
+    } finally {
+      // 🧠 Delay a bit to ensure DB + Cloudinary cleanup done before enabling again
+      setTimeout(() => setIsDeletingMedia(false), 600);
     }
   }
-
 
   // ────────────────────────────────
   // Render

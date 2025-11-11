@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"components/product/shared/LazyVideo.js -> plyr-react\":{\"id\":\"components/product/shared/LazyVideo.js -> plyr-react\",\"files\":[\"static/chunks/_pages-dir-browser_node_modules_plyr-react_esm_index_js.js\"]}}"

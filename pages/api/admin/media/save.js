@@ -30,7 +30,7 @@ handler.post(async (req, res) => {
     "[DEBUG] handler stack:",
     Object.keys(handler)
   );
-  
+
 
   try {
     // ✅ 1️⃣ Always ensure JSON-parsed body
@@ -80,12 +80,22 @@ handler.post(async (req, res) => {
       const url = item.url || item.secure_url;
       const publicId = item.publicId || item.public_id;
       const resourceType = item.resourceType || item.kind || "image";
-    
+
       if (!url || !publicId) {
         console.warn("⚠️ Skipping incomplete record:", item);
         continue;
       }
-    
+      // 🛑 Prevent duplicate entries for the same product + public_id
+      const exists = await db.get(
+        "SELECT id FROM product_media WHERE product_id = ? AND public_id = ?",
+        [productId, publicId]
+      );
+
+      if (exists) {
+        console.warn(`⚠️ Skipping duplicate media for product ${productId}: ${publicId}`);
+        continue;
+      }
+
       await insertStmt.run([
         productId,
         resourceType,
@@ -99,10 +109,10 @@ handler.post(async (req, res) => {
         item.sort_order || 0,
         item.is_primary ? 1 : 0,
       ]);
-    
+
       inserted++;
     }
-    
+
 
     await insertStmt.finalize();
     console.log(`✅ Saved ${inserted} media entries for product ${productId}`);

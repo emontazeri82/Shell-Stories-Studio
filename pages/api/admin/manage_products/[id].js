@@ -3,7 +3,9 @@ import { createAdminHandler } from "@/lib/middleware/createAdminHandler";
 import {
   getProductById,
   updateProductById,
+  getProductMediaByProductId, // now exists 🎉
 } from "@/lib/productHelpers";
+
 import {
   deleteProductById,
   updateProductStatus,
@@ -17,6 +19,8 @@ import { getRedisClient } from "@/lib/redis";
 import { safeRedisKey } from "@/lib/redis/formatkey";
 import { sanitizeProductFields } from "@/lib/utils/sanitizeProductFields";
 import { getProductWithMediaById } from "@/lib/db"; // ✅ added
+// remove unused media imports
+import { deleteCloudinaryAssets } from "@/lib/cloudinaryCleanup";
 // --------------------------------------------------
 // 🔧 Small type helpers
 // --------------------------------------------------
@@ -131,24 +135,74 @@ handler.put(async (req, res) => {
 /* ───────────────────────────────────────────────
    ✅ DELETE /api/admin/manage_products/:id
 ──────────────────────────────────────────────── */
+
 handler.delete(async (req, res) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   const idNum = asInt(req.query.id);
-  if (!isPosInt(idNum)) return sendErrorResponse(res, 400, "Invalid id");
+
+  if (!isPosInt(idNum))
+    return sendErrorResponse(res, 400, "Invalid id");
 
   try {
+    // 1️⃣ Fetch related Cloudinary media before deleting the product
+    const mediaItems = await getProductMediaByProductId(idNum);
+
+    // 2️⃣ Delete the product itself
     const result = await deleteProductById(idNum);
     if (!result || result.changes === 0)
       return sendErrorResponse(res, 404, "Product not found");
 
+    // 3️⃣ Invalidate cache
     await invalidateProductsCache();
 
-    return sendSuccessResponse(res, 200, "Product deleted successfully");
+    // 4️⃣ If media exists → clean it up from Cloudinary
+    if (Array.isArray(mediaItems) && mediaItems.length > 0) {
+      const imageIds = mediaItems
+        .filter((m) => m.kind === "image" && m.public_id)
+        .map((m) => m.public_id);
+
+      const videoIds = mediaItems
+        .filter((m) => m.kind === "video" && m.public_id)
+        .map((m) => m.public_id);
+
+      if (imageIds.length > 0 || videoIds.length > 0) {
+        console.log(
+          `[🧹 CloudinaryCleanup] Found ${imageIds.length} images and ${videoIds.length} videos for product ${idNum}`
+        );
+
+        try {
+          if (imageIds.length > 0)
+            await deleteCloudinaryAssets(imageIds, "image");
+
+          if (videoIds.length > 0)
+            await deleteCloudinaryAssets(videoIds, "video");
+
+          console.log(
+            `[✅ CloudinaryCleanup] All media for product ${idNum} deleted successfully from Cloudinary.`
+          );
+        } catch (cleanupErr) {
+          console.error(
+            `[⚠️ CloudinaryCleanup] Error deleting Cloudinary assets for product ${idNum}:`,
+            cleanupErr
+          );
+        }
+      }
+    }
+
+    // 5️⃣ Final success response with notification message
+    return sendSuccessResponse(
+      res,
+      200,
+      `✅ Product and related media deleted successfully.
+🧹 Unused images and videos have been removed from Cloudinary.`
+    );
+
   } catch (err) {
     console.error("❌ Failed to delete product:", err);
     return sendErrorResponse(res, 500, "Failed to delete product");
   }
 });
+
 
 /* ───────────────────────────────────────────────
    ✅ PATCH /api/admin/manage_products/:id
