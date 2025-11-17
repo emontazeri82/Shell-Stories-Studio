@@ -5,65 +5,47 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import "plyr-react/plyr.css";
 
-const Plyr = dynamic(() => import("plyr-react"), {
-  ssr: false, // ✅ Disable server-side rendering for Plyr
-});
+const Plyr = dynamic(() => import("plyr-react"), { ssr: false });
 
-
-/**
- * LazyVideo — Plyr Upgrade Edition
- * ✅ Keeps your logic & lazy loading
- * ✅ Uses Plyr for adaptive video playback
- * ✅ Cloudinary HLS / MP4 support
- */
 export default function LazyVideo({ src, poster, autoPlay = false }) {
   const [visible, setVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const containerRef = useRef(null);
 
+  // ✅ Clean Cloudinary URL
   const safeSrc = src?.replace(/\.mov$/i, ".mp4");
   const hdUrl = safeSrc?.includes("/upload/")
     ? safeSrc.replace(
-      "/upload/",
-      "/upload/f_auto,vc_auto,q_auto:best,br_3m,w_1920,h_1080/"
-    )
+        "/upload/",
+        "/upload/f_auto,vc_auto,q_auto:best,br_3m,w_1920,h_1080/"
+      )
     : safeSrc;
 
-  // ✅ Try HLS (.m3u8) stream for faster adaptive playback
   const hlsSrc = hdUrl?.replace(".mp4", ".m3u8");
 
+  // ✅ Poster preview
   const previewPoster =
     poster ||
     (safeSrc?.includes("/upload/")
       ? safeSrc
-        .replace(
-          "/upload/",
-          "/upload/so_1,f_jpg,q_auto:eco,c_fill,g_auto,w_400,h_400/"
-        )
-        .replace(/\.[^/.]+$/, ".jpg")
+          .replace(
+            "/upload/",
+            "/upload/so_1,f_jpg,q_auto:eco,c_fill,g_auto,w_400,h_400/"
+          )
+          .replace(/\.[^/.]+$/, ".jpg")
       : "/placeholder.png");
 
-  console.groupCollapsed("[LazyVideo] Setup");
-  console.log("🎥 SafeSrc:", safeSrc);
-  console.log("💎 HD URL:", hdUrl);
-  console.log("📡 HLS URL:", hlsSrc);
-  console.log("🖼 Poster:", previewPoster);
-  console.groupEnd();
-
-  /* ──────────────── Lazy load trigger ──────────────── */
+  /* Lazy load trigger */
   useEffect(() => {
     const obs = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setVisible(true);
-            obs.disconnect();
-          }
-        });
+        if (entries[0].isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
       },
       { rootMargin: "300px" }
     );
-
     if (containerRef.current) obs.observe(containerRef.current);
     return () => obs.disconnect();
   }, []);
@@ -76,14 +58,14 @@ export default function LazyVideo({ src, poster, autoPlay = false }) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden rounded-xl bg-black/10"
+      className="relative w-full h-full overflow-hidden rounded-2xl bg-black/10"
     >
       {/* Poster before visible */}
       {!visible && (
         <motion.img
           src={previewPoster}
           alt="Video preview"
-          className="w-full h-full object-cover blur-sm"
+          className="w-full h-full object-cover blur-sm absolute inset-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4 }}
@@ -91,15 +73,14 @@ export default function LazyVideo({ src, poster, autoPlay = false }) {
         />
       )}
 
-      {/* When visible, show Plyr */}
+      {/* Plyr video player */}
       {visible && (
         <motion.div
           key={hlsSrc}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="w-full h-full relative z-10" // ✅ Ensure controls are on top
-          style={{ pointerEvents: "auto" }}       // ✅ Allow clicks to pass
+          className="absolute inset-0 w-full h-full z-10"
         >
           <Plyr
             source={{
@@ -108,10 +89,7 @@ export default function LazyVideo({ src, poster, autoPlay = false }) {
               poster: previewPoster,
             }}
             options={{
-              controls: [
-                "play-large",
-                "fullscreen",
-              ],
+              controls: ["play-large", "fullscreen"],
               preload: "metadata",
               autoplay: autoPlay,
               clickToPlay: true,
@@ -119,11 +97,12 @@ export default function LazyVideo({ src, poster, autoPlay = false }) {
               muted: autoPlay,
             }}
             onReady={handleReady}
+            className="absolute inset-0 w-full h-full object-cover object-center !rounded-2xl overflow-hidden"
           />
         </motion.div>
       )}
 
-      {/* Optional subtle fade-in overlay */}
+      {/* Fade overlay while loading */}
       {!loaded && visible && (
         <motion.div
           initial={{ opacity: 1 }}

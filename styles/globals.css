@@ -11,7 +11,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  transition: none;
+  transition: none; 
 }
 
 body {
@@ -85,4 +85,36 @@ video {
 .shadow-breath {
   animation: shadowPulse 6s ease-in-out infinite;
 }
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+/* 🔧 Debug override for gallery containment */
+
+/* --- Product Gallery Override --- */
+/* 🩵 Force gallery images to fill their containers absolutely */
+.gallery-image,
+.gallery-video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  aspect-ratio: unset !important;
+}
+
+/* 🧱 Prevent Tailwind's img, video rule from breaking our layout */
+img.gallery-image,
+video.gallery-video {
+  height: 100% !important;
+}
+
 

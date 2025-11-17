@@ -6,7 +6,7 @@ import FocusLock from "react-focus-lock";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart, openCart } from "@/redux/slices/cartSlice";
 import { useClickOutside } from "@/components/useClickOutside";
-import ProductGallery from "../ProductGallery";
+import ProductGalleryDebug from "../ProductGallery";
 
 // ────────────────────────────────
 // 💫 Additional Global Enhancements
@@ -176,7 +176,7 @@ function ProductCard({ product, onClose }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 220, damping: 20 }}
-            className="relative grid grid-cols-1 md:grid-cols-2 max-w-3xl w-full gap-8 p-6 rounded-2xl
+            className="relative grid grid-cols-1 md:grid-cols-2 max-w-5xl w-full gap-8 p-6 rounded-2xl
               bg-gradient-to-br from-white/90 via-zinc-50/80 to-white/70 
               dark:from-gray-900/90 dark:via-zinc-800/90 dark:to-gray-900/85 
               border border-white/20 dark:border-gray-800/60 
@@ -192,18 +192,39 @@ function ProductCard({ product, onClose }) {
               ×
             </button>
 
-            <div className="relative rounded-2xl overflow-hidden 
-                bg-gradient-to-br from-zinc-100 via-zinc-200 to-zinc-50 
-                dark:from-zinc-800 dark:via-zinc-700 dark:to-zinc-800 
-                shadow-lg transition-all duration-500 hover:shadow-2xl">
-              <ProductGallery media={galleryMedia} productName={product.name} />
+            <div
+              className="relative rounded-2xl overflow-hidden
+                  bg-gradient-to-b from-transparent via-transparent to-transparent
+                  shadow-[0_10px_45px_rgba(0,0,0,0.35)]
+                  hover:shadow-[0_14px_55px_rgba(0,0,0,0.5)]
+                  transition-all duration-700 ease-out
+                  flex items-center justify-center
+                  backdrop-blur-[2px]"
+              style={{
+                aspectRatio: "1 / 1",             // ✅ Clean square balance
+                width: "100%",                    // ✅ Scales perfectly
+                maxWidth: "700px",                // ✅ Keeps layout consistent
+                maxHeight: "550px",               // ✅ Soft upper limit, not forced
+                lineHeight: 0,                    // ✅ Removes slim bar gap
+                backgroundColor: "transparent",   // ✅ Full media visibility
+                maskImage:
+                  "radial-gradient(circle at center, rgba(0,0,0,1) 85%, rgba(0,0,0,0) 100%)",
+                WebkitMaskImage:
+                  "radial-gradient(circle at center, rgba(0,0,0,1) 85%, rgba(0,0,0,0) 100%)",
+                border: "1px solid rgba(255,255,255,0.08)", // ✅ Subtle elegant edge
+              }}
+            >˝
+              <ProductGalleryDebug media={galleryMedia} productName={product.name} />
               <span
-                className={`absolute top-3 left-3 text-white text-xs font-semibold px-3 py-1 rounded-full shadow
-                  backdrop-blur-sm ring-1 ring-white/20
-                  ${inStock ? "bg-emerald-600/90 animate-pulse" : "bg-zinc-700/90"}`}
+                className={`absolute top-4 left-4 text-[13px] font-semibold tracking-wide select-none
+                  ${inStock
+                    ? "text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.8)]"
+                    : "text-gray-300 drop-shadow-[0_0_6px_rgba(255,255,255,0.6)]"
+                  }`}
               >
                 {inStock ? "In Stock" : "Out of Stock"}
               </span>
+
             </div>
 
             {/* Details */}
