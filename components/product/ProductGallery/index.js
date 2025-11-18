@@ -329,12 +329,15 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
       const handleEnded = () => {
         console.log("%c[Gallery] 🔚 Video finished", "color:#00e676;font-weight:bold;");
         setVideoEnded(true);
+
+        // DO NOT auto-rotate here.
+        // Let hover recovery decide when to resume.
         setActive((prev) => (prev + 1) % items.length);
 
-        if (!isHovered) {
-          console.log("%c[Gallery] ⭐ Resuming rotation after video end", "color:#4fc3f7;font-weight:bold;");
-          startRotation();
-        }
+        // mark for grace period
+        setVideoJustEnded(true);
+        setTimeout(() => setVideoJustEnded(false), 50);
+
         setVideoJustEnded(true);
         setTimeout(() => setVideoJustEnded(false), 50);  // tiny grace period
       };
@@ -390,11 +393,17 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
     // 4️⃣ If we get here:
     //    • image unhover
     //    • OR video finished + unhover
-    console.log(
-      "%c[Hover Recovery] 🕒 Unhover → resume rotation",
-      "color:#4fc3f7;font-weight:bold;"
-    );
+    // 4️⃣ If video has finished + unhover → resume rotation
+    if (activeItem?.type === "video" && videoEnded) {
+      console.log("%c[Hover Recovery] ▶ Resume after video ended + unhover", "color:#00e676;font-weight:bold;");
+      startRotation();
+      return;
+    }
+
+    // 5️⃣ Images → normal resume
+    console.log("%c[Hover Recovery] 🕒 Unhover → resume rotation (image)", "color:#4fc3f7;font-weight:bold;");
     startRotation();
+
 
   }, [isHovered, videoEnded, videoJustEnded, activeItem?.type]);
 
@@ -408,7 +417,7 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
   useEffect(() => {
     scrollThumbnailIntoCenter(active);
   }, [active]);
-  
+
 
   // 🧱 UI
   return (
