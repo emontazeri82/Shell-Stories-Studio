@@ -176,13 +176,13 @@ function ProductCard({ product, onClose }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 220, damping: 20 }}
-            className="relative grid grid-cols-1 md:grid-cols-2 max-w-5xl w-full gap-8 p-6 rounded-2xl
-              bg-gradient-to-br from-white/90 via-zinc-50/80 to-white/70 
-              dark:from-gray-900/90 dark:via-zinc-800/90 dark:to-gray-900/85 
-              border border-white/20 dark:border-gray-800/60 
-              shadow-[0_4px_40px_rgba(0,0,0,0.3)] backdrop-blur-2xl 
-              transition-all duration-500 hover:shadow-[0_4px_50px_rgba(0,0,0,0.5)] shadow-breath"
+            className="
+              relative grid grid-cols-1 md:grid-cols-2 max-w-5xl w-full gap-8 p-6 rounded-2xl 
+              luxury-product-bg shadow-breath transition-all duration-500
+            "
           >
+            {/* ✨ ADD THIS LINE HERE — FIRST CHILD */}
+            <div className="luxury-shimmer"></div>
             {/* Close button */}
             <button
               onClick={onClose}

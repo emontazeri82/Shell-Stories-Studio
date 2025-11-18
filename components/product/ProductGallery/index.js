@@ -71,9 +71,44 @@ function normalizeItem(m) {
   });
   return { key, url: safeUrl, type: isVideo ? "video" : "image", mainUrl, poster };
 }
+/*───────────────────────────── ADVANCED 3D TILT ENGINE ─────────────────────────────*/
+
+function applyAdvancedTilt(container, inner, event) {
+  if (!container || !inner) return;
+
+  const rect = container.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  const percentX = (x / rect.width) * 2 - 1;  // -1 to 1
+  const percentY = (y / rect.height) * 2 - 1; // -1 to 1
+
+  // MAX DEGREE ROTATION
+  const maxTilt = 13;
+
+  const rotateY = percentX * maxTilt;
+  const rotateX = -percentY * maxTilt;
+
+  inner.style.transform = `
+    perspective(1000px)
+    rotateX(${rotateX}deg)
+    rotateY(${rotateY}deg)
+    scale(1.06)
+  `;
+}
+
+function resetTilt(inner) {
+  if (!inner) return;
+  inner.style.transition = "transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1)";
+  inner.style.transform = "rotateX(0deg) rotateY(0deg) scale(1)";
+  setTimeout(() => {
+    if (inner) inner.style.transition = "";
+  }, 450);
+}
+
 
 /*───────────────────────────── LAZY VIDEO ─────────────────────────────*/
-function LazyVideo({ src, poster, autoPlay = false, onEnded }) {
+function LazyVideo({ src, poster, autoPlay = false, onEnded, className }) {
   const [visible, setVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const containerRef = useRef(null);
@@ -133,7 +168,7 @@ function LazyVideo({ src, poster, autoPlay = false, onEnded }) {
           playsInline
           controls
           preload="metadata"
-          className="absolute inset-0 w-full h-full object-cover rounded-2xl border border-green-400/20"
+          className={`w-full h-full object-cover rounded-2xl border border-green-400/20 will-change-transform ${className || ""}`}
           onPlay={() => console.log("%c▶️ Playing", "color:#00e676;")}
           onPause={() => console.log("%c⏸ Paused", "color:#ffb300;")}
           onEnded={() => {
@@ -173,7 +208,9 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
   const [isHovered, setIsHovered] = useState(false);
   const [videoEnded, setVideoEnded] = useState(false);
   const [shouldResume, setShouldResume] = useState(false);
+  const [videoJustEnded, setVideoJustEnded] = useState(false);
   const intervalRef = useRef(null);
+  const thumbRowRef = useRef(null);
   const activeItem = items[active] || null;
 
   // 🧹 Always clean old interval safely
@@ -189,6 +226,29 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
       setActive((prev) => (prev + 1) % items.length);
     }, 5000);
   };
+
+  const scrollThumbnailIntoCenter = (index) => {
+    if (!thumbRowRef.current) return;
+
+    const container = thumbRowRef.current;
+    const thumbnail = container.children[index];
+    if (!thumbnail) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const thumbRect = thumbnail.getBoundingClientRect();
+
+    const scrollOffset =
+      thumbRect.left -
+      containerRect.left -
+      containerRect.width / 2 +
+      thumbRect.width / 2;
+
+    container.scrollBy({
+      left: scrollOffset,
+      behavior: "smooth",
+    });
+  };
+
 
   // 🔁 Main Logic
   useEffect(() => {
@@ -231,51 +291,64 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
 
       setVideoEnded(false);
 
-      // Get actual active video
-      const videoEl = document.querySelector(
-        "[data-gallery-video='active'] video"
-      );
+      const videoEl = document.querySelector("[data-gallery-video='active'] video");
 
       if (!videoEl) {
         console.warn(
           "%c[Gallery] ⚠️ No <video> found → retrying...",
           "color:#ff9800;font-weight:bold;"
         );
-
         window.__galleryRetryTimer = setTimeout(() => {
-          const retryVideo = document.querySelector(
-            "[data-gallery-video='active'] video"
-          );
+          const retryVideo = document.querySelector("[data-gallery-video='active'] video");
           if (retryVideo) retryVideo.play();
         }, 300);
-
         return;
       }
 
-      const handleEnded = () => {
-        console.log(
-          "%c[Gallery] 🔚 Video finished",
-          "color:#00e676;font-weight:bold;"
-        );
-        setVideoEnded(true);
+      //
+      // ⭐ NEW — MANUAL PLAY/PAUSE BEHAVIOR
+      //
+      videoEl.controls = true;
 
-        // Move to next media
+      const handlePause = () => {
+        console.log("%c[Video] ⏸ User paused → stop rotation", "color:#ff9800;font-weight:bold;");
+        clearRotation();
+      };
+
+      const handlePlay = () => {
+        console.log("%c[Video] ▶ User played → stop rotation during playback", "color:#4caf50;font-weight:bold;");
+        clearRotation();
+      };
+
+      videoEl.addEventListener("pause", handlePause);
+      videoEl.addEventListener("play", handlePlay);
+
+      //
+      // EXISTING — HANDLE VIDEO ENDING
+      //
+      const handleEnded = () => {
+        console.log("%c[Gallery] 🔚 Video finished", "color:#00e676;font-weight:bold;");
+        setVideoEnded(true);
         setActive((prev) => (prev + 1) % items.length);
 
-        // ⭐ If user is NOT hovering, resume rotating
         if (!isHovered) {
-          console.log(
-            "%c[Gallery] ⭐ Resuming rotation after video end",
-            "color:#4fc3f7;font-weight:bold;"
-          );
+          console.log("%c[Gallery] ⭐ Resuming rotation after video end", "color:#4fc3f7;font-weight:bold;");
           startRotation();
         }
+        setVideoJustEnded(true);
+        setTimeout(() => setVideoJustEnded(false), 50);  // tiny grace period
       };
 
       videoEl.addEventListener("ended", handleEnded);
 
+      //
+      // ⭐ CLEANUP SECTION — your missing part goes HERE
+      //
       return () => {
+        console.log("%c[Gallery] 🧹 Removing video listeners + clearing intervals", "color:#f44336;font-weight:bold;");
         videoEl.removeEventListener("ended", handleEnded);
+        videoEl.removeEventListener("pause", handlePause);  // 👈 ADD HERE
+        videoEl.removeEventListener("play", handlePlay);    // 👈 ADD HERE
         clearRotation();
       };
     }
@@ -291,6 +364,8 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
 
   // 🧭 Hover Recovery
   useEffect(() => {
+
+    // 1️⃣ Hovering → always pause rotation
     if (isHovered) {
       console.log(
         "%c[Hover Recovery] 🧭 Still hovered → stay paused",
@@ -300,30 +375,29 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
       return;
     }
 
-    if (activeItem?.type === "video") {
-      if (!videoEnded) {
-        console.log(
-          "%c[Hover Recovery] ⏸ Video still playing → no resume",
-          "color:#ff9800;font-weight:bold;"
-        );
-        return;
-      }
-
-      console.log(
-        "%c[Hover Recovery] ⭐ Video ended → resume rotation NOW",
-        "color:#4fc3f7;font-weight:bold;"
-      );
-      startRotation();
+    // 2️⃣ Prevent race condition when video just ended
+    if (videoJustEnded) {
+      console.log("[Hover Recovery] 🛑 Ignoring hover recovery (video just ended)");
       return;
     }
 
-    // IMAGE CASE → resume after unhover
+    // 3️⃣ If video is still playing → do NOT resume rotation
+    if (activeItem?.type === "video" && !videoEnded) {
+      console.log("[Hover Recovery] ⏸ Video still playing → no resume");
+      return;
+    }
+
+    // 4️⃣ If we get here:
+    //    • image unhover
+    //    • OR video finished + unhover
     console.log(
       "%c[Hover Recovery] 🕒 Unhover → resume rotation",
       "color:#4fc3f7;font-weight:bold;"
     );
     startRotation();
-  }, [isHovered, videoEnded, activeItem?.type]);
+
+  }, [isHovered, videoEnded, videoJustEnded, activeItem?.type]);
+
 
   console.log(
     "%c[Gallery] Active Item:",
@@ -331,6 +405,10 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
     activeItem
   );
 
+  useEffect(() => {
+    scrollThumbnailIntoCenter(active);
+  }, [active]);
+  
 
   // 🧱 UI
   return (
@@ -340,7 +418,7 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
         className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-zinc-900/40 perspective-1000"
         onMouseEnter={(e) => {
           console.log("%c[Hover Debug] Mouse entered viewer", "color:#ffca28;font-weight:bold;");
-          clearInterval(intervalRef.current);
+          clearRotation();   // ⭐ Stops rotation instantly for both images + videos
           if (window.__galleryRetryTimer) {
             clearTimeout(window.__galleryRetryTimer);
             window.__galleryRetryTimer = null;
@@ -350,21 +428,24 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
         onMouseLeave={(e) => {
           console.log("%c[Hover Debug] Mouse left viewer", "color:#ffca28;font-weight:bold;");
           setIsHovered(false);
-          const target = e.currentTarget.querySelector(".tilt-inner");
-          if (target) target.style.transform = "rotateX(0deg) rotateY(0deg)";
+
+          resetTilt(e.currentTarget.querySelector(".tilt-inner"));
+
+          // ⭐ RESUME rotation based on rules
+          if (activeItem?.type === "image") {
+            startRotation();
+          }
+          if (activeItem?.type === "video" && videoEnded) {
+            startRotation();
+          }
         }}
         onMouseMove={(e) => {
-          const target = e.currentTarget.querySelector(".tilt-inner");
-          if (!target) return;
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          const rotateX = ((y - rect.height / 2) / rect.height) * -10;
-          const rotateY = ((x - rect.width / 2) / rect.width) * 10;
-          target.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.03)`;
+          const container = e.currentTarget;
+          const inner = container.querySelector(".tilt-inner");
+          applyAdvancedTilt(container, inner, e);   // ← use advanced tilt engine
         }}
       >
-        <div className="tilt-inner absolute inset-0 transition-transform duration-200 ease-out will-change-transform rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+        <div className="tilt-inner absolute inset-0 will-change-transform rounded-2xl transition-transform">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeItem.key}
@@ -372,13 +453,14 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.6, ease: "easeInOut" }}
-              className="absolute inset-0 pointer-events-none"
+              className="w-full h-full will-change-transform"
             >
               {activeItem.type === "video" ? (
                 <LazyVideo
                   src={activeItem.mainUrl || activeItem.url}
                   poster={activeItem.poster}
                   autoPlay={true}
+                  className="will-change-transform"
                 />
               ) : (
                 <Image
@@ -386,7 +468,7 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
                   alt={`${productName || "Product"} image`}
                   unoptimized
                   fill
-                  className="object-cover object-center absolute inset-0 rounded-2xl border border-cyan-400/30 bg-black"
+                  className="object-cover object-center w-full h-full rounded-2xl border border-cyan-400/30 bg-black will-change-transform"
                   onLoad={(e) => {
                     console.log(
                       "%c[Image] ✅ Loaded & Filling Viewer:",
@@ -417,42 +499,58 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
 
       {/* 🎞 Thumbnails */}
       {items.length > 1 && (
-        <div className="flex justify-center flex-wrap gap-4 md:gap-6 mt-4">
-          {items.map((t, i) => (
-            <motion.button
-              key={t.key}
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                console.log("%c[Gallery] 🎯 Thumbnail clicked:", "color:#ec407a;", t);
-                setActive(i);
-              }}
-              type="button"
-              className={`relative overflow-hidden rounded-xl p-1.5 transition-all duration-300 ease-out ${i === active
-                ? "ring-2 ring-fuchsia-400 shadow-[0_0_25px_rgba(240,100,255,0.45)] bg-gradient-to-br from-indigo-700/60 to-fuchsia-700/50 scale-105"
-                : "hover:ring-1 hover:ring-indigo-300/70 hover:shadow-[0_0_20px_rgba(160,120,255,0.3)] bg-gradient-to-br from-zinc-800/70 to-zinc-900/60 hover:scale-[1.05]"
-                } w-20 h-16 md:w-24 md:h-20 flex items-center justify-center backdrop-blur-sm border border-fuchsia-400/30`}
-            >
-              {t.type === "video" ? (
-                <video
-                  src={t.mainUrl || t.url}
-                  muted
-                  preload="metadata"
-                  poster={t.poster}
-                  className="object-cover w-full h-full rounded-lg border border-green-400/30"
-                />
-              ) : (
-                <Image
-                  src={t.poster || "/placeholder.png"}
-                  alt={`${t.type} thumbnail`}
-                  width={96}
-                  height={72}
-                  unoptimized
-                  className="object-cover w-full h-full rounded-lg border border-blue-400/30"
-                />
-              )}
-            </motion.button>
-          ))}
+        <div className="relative w-full mt-4">
+
+          {/* Fade Masks */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-black/30 to-transparent z-20"></div>
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-black/30 to-transparent z-20"></div>
+
+          {/* Scrollable Row */}
+          <div ref={thumbRowRef} className="thumbnail-row thumbnail-mask mt-4 relative overflow-x-auto scrollbar-hide">
+            {items.map((t, i) => (
+              <motion.button
+                key={t.key}
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  console.log("%c[Gallery] 🎯 Thumbnail clicked:", "color:#ec407a;", t);
+                  setActive(i);
+                }}
+                type="button"
+                className={`
+            thumbnail-button
+            relative overflow-hidden rounded-xl p-1.5 
+            transition-all duration-300 ease-out 
+            ${i === active
+                    ? "ring-2 ring-fuchsia-400 shadow-[0_0_25px_rgba(240,100,255,0.45)] bg-gradient-to-br from-indigo-700/60 to-fuchsia-700/50 thumbnail-active"
+                    : "hover:ring-1 hover:ring-indigo-300/70 hover:shadow-[0_0_20px_rgba(160,120,255,0.3)] bg-gradient-to-br from-zinc-800/70 to-zinc-900/60"
+                  }
+            w-20 h-16 md:w-24 md:h-20 
+            flex items-center justify-center 
+            backdrop-blur-sm border border-fuchsia-400/30
+          `}
+              >
+                {t.type === "video" ? (
+                  <video
+                    src={t.mainUrl || t.url}
+                    muted
+                    preload="metadata"
+                    poster={t.poster}
+                    className="object-cover w-full h-full rounded-lg border border-green-400/30"
+                  />
+                ) : (
+                  <Image
+                    src={t.poster || "/placeholder.png"}
+                    alt={`${t.type} thumbnail`}
+                    width={96}
+                    height={72}
+                    unoptimized
+                    className="object-cover w-full h-full rounded-lg border border-blue-400/30"
+                  />
+                )}
+              </motion.button>
+            ))}
+          </div>
         </div>
       )}
     </div>

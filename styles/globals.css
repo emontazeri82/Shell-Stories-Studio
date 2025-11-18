@@ -117,4 +117,132 @@ video.gallery-video {
   height: 100% !important;
 }
 
+/* ------------------------------------------------------------------
+   ✨ IRIDESCENT AURORA PEARL — The Best of the Best (Premium Variant)
+   ------------------------------------------------------------------ */
+   .luxury-product-bg {
+    position: relative;
+    overflow: hidden;
+    border-radius: 22px;
+  
+    background:
+      radial-gradient(
+        circle at 25% 20%,
+        rgba(255, 210, 255, 0.45),
+        transparent 60%
+      ),
+      radial-gradient(
+        circle at 80% 75%,
+        rgba(150, 240, 255, 0.40),
+        transparent 55%
+      ),
+      linear-gradient(
+        135deg,
+        rgba(255, 180, 255, 0.28),
+        rgba(130, 180, 255, 0.35),
+        rgba(100, 255, 230, 0.32),
+        rgba(255, 255, 200, 0.28)
+      );
+  
+    background-blend-mode: screen, lighten, normal;
+  
+    border: 1px solid rgba(255, 255, 255, 0.22);
+  
+    backdrop-filter: blur(22px) saturate(1.8);
+  
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.28),
+      inset 0 0 40px rgba(255, 255, 255, 0.10);
+  
+    transition: box-shadow 0.45s ease, transform 0.5s ease, border-color 0.45s ease;
+  }
+  
+  /* ✨ Hover — ultra premium glow */
+  .luxury-product-bg:hover {
+    box-shadow:
+      0 0 45px rgba(255, 255, 255, 0.32),
+      0 0 95px rgba(120, 190, 255, 0.48),
+      inset 0 0 50px rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.32);
+    transform: translateY(-2px);
+  }
+  
+  /* ------------------------------------------------------------------
+     💎 Iridescent shimmer overlay (light passes over the surface)
+     ------------------------------------------------------------------ */
+  .luxury-shimmer {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  
+    background: linear-gradient(
+      115deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 40%,
+      rgba(255, 255, 255, 0.25) 50%,
+      rgba(255, 255, 255, 0.12) 60%,
+      transparent 100%
+    );
+    background-size: 250% 250%;
+  
+    animation: aurora-shimmer 7.5s ease-in-out infinite;
+    mix-blend-mode: screen;
+  }
+  
+  @keyframes aurora-shimmer {
+    0%   { background-position: 0% 50%; filter: brightness(1); }
+    50%  { background-position: 100% 50%; filter: brightness(1.25); }
+    100% { background-position: 0% 50%; filter: brightness(1); }
+  }
+  /* --- HORIZONTAL SCROLL THUMBNAILS --- */
+.thumbnail-row {
+  display: flex;
+  gap: 1rem;
+  padding: 0.6rem 0.5rem;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.thumbnail-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fade mask already active */
+.thumbnail-mask {
+  mask-image: linear-gradient(to right,
+    transparent 0%,
+    black 10%,
+    black 90%,
+    transparent 100%
+  );
+}
+
+/* --- Thumbnails beauty motion --- */
+.thumbnail-button {
+  transition: transform 0.25s ease, filter 0.25s ease;
+  flex-shrink: 0; /* ⭐ ensures perfect horizontal scrolling */
+}
+.thumbnail-button:hover {
+  transform: translateY(-4px) scale(1.07);
+  filter: drop-shadow(0 0 12px rgba(240, 100, 255, 0.7));
+}
+
+/* Active thumbnail enhancement */
+.thumbnail-active {
+  transform: scale(1.1);
+  box-shadow: 0 0 35px rgba(240, 100, 255, 0.55);
+}
+
+/* --- Optional: Smooth item scrolling on wheel --- */
+.thumbnail-row {
+  scroll-snap-type: x proximity;
+}
+.thumbnail-row > * {
+  scroll-snap-align: center;
+}
+
+  
+
+
 
