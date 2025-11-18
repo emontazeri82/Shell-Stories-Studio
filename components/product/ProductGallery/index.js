@@ -108,9 +108,10 @@ function resetTilt(inner) {
 
 
 /*───────────────────────────── LAZY VIDEO ─────────────────────────────*/
-function LazyVideo({ src, poster, autoPlay = false, onEnded, className }) {
+function LazyVideo({ src, poster, autoPlay = false, onEnded, className, onReady }) {
   const [visible, setVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const videoElementRef = useRef(null);
   const containerRef = useRef(null);
 
   const safeSrc = src?.replace(/\.mov$/i, ".mp4");
@@ -160,6 +161,10 @@ function LazyVideo({ src, poster, autoPlay = false, onEnded, className }) {
       )}
       {visible && (
         <motion.video
+          ref={(el) => {
+            videoElementRef.current = el;
+            if (onReady) onReady(el);
+          }}
           key={hdUrl}
           src={hdUrl}
           poster={previewPoster}
@@ -171,10 +176,7 @@ function LazyVideo({ src, poster, autoPlay = false, onEnded, className }) {
           className={`w-full h-full object-cover rounded-2xl border border-green-400/20 will-change-transform ${className || ""}`}
           onPlay={() => console.log("%c▶️ Playing", "color:#00e676;")}
           onPause={() => console.log("%c⏸ Paused", "color:#ffb300;")}
-          onEnded={() => {
-            console.log("%c🔚 Ended", "color:#2196f3;");
-            if (onEnded) onEnded(); // ✅ trigger parent callback
-          }}
+          onEnded={onEnded}
           onLoadedData={() => {
             setLoaded(true);
             console.log("%c[LazyVideo] ✅ Loaded video", "color:#00e676;");
@@ -208,9 +210,11 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
   const [isHovered, setIsHovered] = useState(false);
   const [videoEnded, setVideoEnded] = useState(false);
   const [shouldResume, setShouldResume] = useState(false);
-  const [videoJustEnded, setVideoJustEnded] = useState(false);
   const intervalRef = useRef(null);
+  const unhoverBufferRef = useRef(false);
   const thumbRowRef = useRef(null);
+  const videoRef = useRef(null);
+  const hoverRef = useRef(false);
   const activeItem = items[active] || null;
 
   // 🧹 Always clean old interval safely
@@ -247,6 +251,11 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
       left: scrollOffset,
       behavior: "smooth",
     });
+  };
+
+  const handleVideoEnd = () => {
+    console.log("%c[Gallery] Video ended callback", "color:#00e676;");
+    setVideoEnded(true);
   };
 
 
@@ -291,7 +300,7 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
 
       setVideoEnded(false);
 
-      const videoEl = document.querySelector("[data-gallery-video='active'] video");
+      const videoEl = videoRef.current;
 
       if (!videoEl) {
         console.warn(
@@ -299,8 +308,7 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
           "color:#ff9800;font-weight:bold;"
         );
         window.__galleryRetryTimer = setTimeout(() => {
-          const retryVideo = document.querySelector("[data-gallery-video='active'] video");
-          if (retryVideo) retryVideo.play();
+          if (videoRef.current) videoRef.current.play();
         }, 300);
         return;
       }
@@ -330,16 +338,17 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
         console.log("%c[Gallery] 🔚 Video finished", "color:#00e676;font-weight:bold;");
         setVideoEnded(true);
 
-        // DO NOT auto-rotate here.
-        // Let hover recovery decide when to resume.
-        setActive((prev) => (prev + 1) % items.length);
+        // Use the realtime hoverRef, not stale isHovered
+        if (hoverRef.current) {
+          console.log("%c[Gallery] ⏸ Hovering → don't go next", "color:#ff9800;");
+          return;
+        }
 
-        // mark for grace period
-        setVideoJustEnded(true);
-        setTimeout(() => setVideoJustEnded(false), 50);
+        // Only advance if NOT hovering
+        if (!hoverRef.current) {
+          setActive((prev) => (prev + 1) % items.length);
+        }
 
-        setVideoJustEnded(true);
-        setTimeout(() => setVideoJustEnded(false), 50);  // tiny grace period
       };
 
       videoEl.addEventListener("ended", handleEnded);
@@ -367,45 +376,32 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
 
   // 🧭 Hover Recovery
   useEffect(() => {
-
-    // 1️⃣ Hovering → always pause rotation
     if (isHovered) {
-      console.log(
-        "%c[Hover Recovery] 🧭 Still hovered → stay paused",
-        "color:#ff9800;font-weight:bold;"
-      );
       clearRotation();
       return;
     }
 
-    // 2️⃣ Prevent race condition when video just ended
-    if (videoJustEnded) {
-      console.log("[Hover Recovery] 🛑 Ignoring hover recovery (video just ended)");
-      return;
-    }
+    // Skip resume if video just ended + unhovered too fast
+    if (unhoverBufferRef.current) return;
 
-    // 3️⃣ If video is still playing → do NOT resume rotation
+    // If video is active and NOT ended, do not rotate
     if (activeItem?.type === "video" && !videoEnded) {
-      console.log("[Hover Recovery] ⏸ Video still playing → no resume");
+      clearRotation();
       return;
     }
 
-    // 4️⃣ If we get here:
-    //    • image unhover
-    //    • OR video finished + unhover
-    // 4️⃣ If video has finished + unhover → resume rotation
+    // If video ended + unhover → rotate
     if (activeItem?.type === "video" && videoEnded) {
-      console.log("%c[Hover Recovery] ▶ Resume after video ended + unhover", "color:#00e676;font-weight:bold;");
       startRotation();
       return;
     }
 
-    // 5️⃣ Images → normal resume
-    console.log("%c[Hover Recovery] 🕒 Unhover → resume rotation (image)", "color:#4fc3f7;font-weight:bold;");
-    startRotation();
+    // Normal images
+    if (activeItem?.type === "image") {
+      startRotation();
+    }
+  }, [isHovered, videoEnded, activeItem?.type]);
 
-
-  }, [isHovered, videoEnded, videoJustEnded, activeItem?.type]);
 
 
   console.log(
@@ -418,6 +414,20 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
     scrollThumbnailIntoCenter(active);
   }, [active]);
 
+  useEffect(() => {
+    if (videoEnded) {
+      unhoverBufferRef.current = true;
+
+      // Give React time to commit videoEnded state
+      setTimeout(() => {
+        unhoverBufferRef.current = false;
+      }, 120);
+    }
+  }, [videoEnded]);
+
+  useEffect(() => {
+    hoverRef.current = isHovered;
+  }, [isHovered]);
 
   // 🧱 UI
   return (
@@ -440,13 +450,6 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
 
           resetTilt(e.currentTarget.querySelector(".tilt-inner"));
 
-          // ⭐ RESUME rotation based on rules
-          if (activeItem?.type === "image") {
-            startRotation();
-          }
-          if (activeItem?.type === "video" && videoEnded) {
-            startRotation();
-          }
         }}
         onMouseMove={(e) => {
           const container = e.currentTarget;
@@ -470,6 +473,8 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
                   poster={activeItem.poster}
                   autoPlay={true}
                   className="will-change-transform"
+                  onReady={(el) => (videoRef.current = el)}
+                  onEnded={handleVideoEnd}   // ← REQUIRED
                 />
               ) : (
                 <Image
