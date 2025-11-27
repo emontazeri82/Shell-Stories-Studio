@@ -151,6 +151,14 @@ export default async function handler(req, res) {
 
     // Cache for edge/CDN
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+    console.log("🔎 [API /products] NORMALIZED ITEMS:", normalized);
+    normalized.forEach(p => {
+      console.log(`➡️ Product ${p.id}: name="${p.name}" desc="${p.description}"`);
+    });
+    console.log("🔎 API NORMALIZED ITEMS:");
+    normalized.forEach(p => {
+      console.log(`ID ${p.id} => desc="${p.description}"`);
+    });
 
     return res.status(200).json({
       items: normalized,

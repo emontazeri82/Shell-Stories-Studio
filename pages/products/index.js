@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import Layout from "@/components/Layout";
+import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import ProductFavorite from "@/components/product-card/ProductFavorite";
 import { getProductsServerSideProps } from "@/lib/static-data/getServerSideProps";
@@ -58,7 +58,17 @@ export default function ProductsPage({ products }) {
         <h1 className="text-3xl font-bold text-center mb-8 font-poppins">
           Our Shell Collection
         </h1>
+        {/* ⭐ LUXURY STORY SECTION (PLACE IT HERE) */}
+        <div className="max-w-2xl mx-auto text-center mb-12">
+          <h2 className="font-playfair text-4xl tracking-tight mb-4">
+            Crafted by Nature, Refined by Hand
+          </h2>
 
+          <p className="text-zinc-600 max-w-xl mx-auto">
+            Each shell is selected, polished, and transformed into a timeless art piece.
+            Explore our curated luxury collection built with care and craftsmanship.
+          </p>
+        </div>
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
           {products.map((product) => (
             <ProductFavorite

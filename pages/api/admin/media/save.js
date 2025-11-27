@@ -4,6 +4,7 @@ import sqlite3 from "sqlite3";
 import { open } from "sqlite";
 import { createAdminUploadHandler } from "@/lib/middleware/createAdminUploadHandler";
 import { requestDebugger } from "@/lib/middleware/requestDebugger";
+import { syncPrimaryImage } from "@/lib/productMediaUtils";
 
 const handler = createAdminUploadHandler();
 console.log("[DEBUG] createAdminUploadHandler initialized at", new Date().toISOString());
@@ -116,6 +117,13 @@ handler.post(async (req, res) => {
 
     await insertStmt.finalize();
     console.log(`✅ Saved ${inserted} media entries for product ${productId}`);
+    // after inserting media row
+    if (inserted > 0) {
+      console.log("🔄 Syncing primary image because new media was inserted...");
+      await syncPrimaryImage(productId);
+    } else {
+      console.log("ℹ️ No new media inserted — skipping primary sync.");
+    }    
 
     // ✅ 4️⃣ Confirm completion
     return res.status(200).json({

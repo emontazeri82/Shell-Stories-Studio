@@ -11,7 +11,7 @@ export default function FavoriteCardImage({ product, highlightFromCenter }) {
 
   return (
     <div
-      className={`relative aspect-square overflow-hidden ${
+      className={`relative aspect-square overflow-hidden max-w-[380px] mx-auto mask-luxury ${
         highlightFromCenter ? "animate-[pop_600ms_ease-out_1]" : ""
       }`}
     >
@@ -20,7 +20,7 @@ export default function FavoriteCardImage({ product, highlightFromCenter }) {
         alt={product?.name || "Product image"}
         fill
         sizes="(min-width: 768px) 33vw, 100vw"
-        className="object-cover transition-transform duration-300 group-hover:scale-105"
+        className="object-cover object-center transition-transform duration-700 ease-[cubic-bezier(.19,1,.22,1)] group-hover:scale-110"
         priority={false}
       />
     </div>

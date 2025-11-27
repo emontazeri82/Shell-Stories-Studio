@@ -241,6 +241,10 @@ video.gallery-video {
 .thumbnail-row > * {
   scroll-snap-align: center;
 }
+.mask-luxury {
+  border-radius: 28px;
+}
+
 
   
 

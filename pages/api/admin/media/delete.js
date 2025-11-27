@@ -19,6 +19,14 @@ export default createAdminHandler({
     if (!public_id || typeof public_id !== "string") {
       return sendErrorResponse(res, 400, "Missing or invalid public_id");
     }
+    // 0️⃣ Lookup product_id so we can resync main image
+    const [prod] = await query(
+      "SELECT product_id FROM product_media WHERE public_id = ?",
+      [public_id]
+    );
+
+    const productId = prod?.product_id || null;
+
 
     try {
       console.log("[media/delete] 🧩 Request to delete:", public_id);
@@ -70,6 +78,17 @@ export default createAdminHandler({
       );
 
       console.log("[media/delete] 🗑️ DB deletion result:", dbResult);
+
+      // 🔄 5️⃣ Sync primary image if this media belonged to a product
+      if (productId) {
+        try {
+          const { syncPrimaryImage } = await import("@/lib/productMediaUtils");
+          await syncPrimaryImage(productId);
+          console.log(`[media/delete] 🔄 Primary image resynced for product ${productId}`);
+        } catch (syncErr) {
+          console.error("[media/delete] ❌ Failed to sync primary image:", syncErr);
+        }
+      }
 
       // ────────────────────────────────
       // 5️⃣ Return success response

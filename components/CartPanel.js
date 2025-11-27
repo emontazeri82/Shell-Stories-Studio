@@ -25,11 +25,19 @@ export default function CartPanel({ isOpen, onClose }) {
     router.push("/cart");
   };
 
+  // 🔒 Lock background scroll when cart is open
   useEffect(() => {
     if (isOpen) {
-      closeBtnRef.current?.focus();
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
     }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isOpen]);
+
 
   useClickOutside(panelRef, onClose);
 
@@ -39,11 +47,15 @@ export default function CartPanel({ isOpen, onClose }) {
       {isOpen && (
         <motion.aside
           ref={panelRef}
-          className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 shadow-2xl z-50 overflow-y-auto"
+          className="fixed top-0 right-0 h-full w-full sm:w-[420px]
+             bg-gradient-to-b from-white/95 via-white/80 to-white/90
+             dark:from-zinc-900/95 dark:via-zinc-900/80 dark:to-zinc-900/90
+             backdrop-blur-2xl border-l border-black/10 dark:border-white/10
+             shadow-[0_0_60px_rgba(0,0,0,0.15)] z-50 overflow-y-auto scroll-smooth overscroll-none"
           initial={{ x: "100%" }}
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
-          transition={{ type: "tween", duration: 0.3 }}
+          transition={{ type: "tween", duration: 0.35 }}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           onDragEnd={(e, info) => {
@@ -77,7 +89,9 @@ export default function CartPanel({ isOpen, onClose }) {
             </div>
 
             {items.length > 0 && (
-              <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t dark:border-gray-700 px-4 py-3 shadow-inner z-10">
+              <div className="sticky bottom-0 bg-white/80 dark:bg-zinc-900/80
+                backdrop-blur-xl border-t border-black/10 dark:border-white/10
+                px-4 py-4 shadow-[0_-6px_30px_rgba(0,0,0,0.08)]">
                 <CartSummary />
                 {/* Actions */}
                 <div className="mt-3">

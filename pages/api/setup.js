@@ -204,31 +204,6 @@ async function populateRoles(db) {
   console.log('✅ Admin user inserted (if not exists)');
 }
 
-async function populateProducts(db) {
-  try {
-    await db.run(`
-      INSERT OR IGNORE INTO products (name, description, price, stock, image_url, category, is_active) VALUES
-      ('Butterfly Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image1.jpg', 'floral', 1),
-      ('Floral Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image2.jpg', 'floral', 1),
-      ('Butterfly & Rose Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image3.jpg', 'rose', 1),
-      ('Floral Shell Set', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image4.jpg', 'floral', 1),
-      ('Hummingbird Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image5.jpg', 'bird', 1),
-      ('Lavender Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image6.jpg', 'lavender', 1),
-      ('Blue Floral Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image7.jpg', 'floral', 1),
-      ('Purple Floral Shell', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image8.jpg', 'floral', 1),
-      ('Hummingbird Set', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image9.jpg', 'bird', 1),
-      ('Golden Flight', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image10.jpg', 'bird', 1),
-      ('Vibrant Hummingbird', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image11.jpg', 'bird', 1),
-      ('Purple Bloom', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image12.jpg', 'floral', 1),
-      ('Personalized Butterfly', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image13.jpg', 'custom', 1),
-      ('Watercolor Floral', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image14.jpg', 'floral', 1),
-      ('Hummingbird Shell 2', 'Handmade shell decorative', 24.95, 1, '/assets/images/products/image15.jpg', 'bird', 1);
-    `);
-  } catch (err) {
-    console.error('Error populating products:', err);
-  }
-}
-
 export default async function handler(req, res) {
   // 🚫 Block access in production
   if (process.env.NODE_ENV !== 'development') {

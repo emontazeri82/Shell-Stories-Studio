@@ -374,35 +374,32 @@ export default function ProductGalleryDebug({ media = [], productName = "" }) {
     };
   }, [activeItem, isHovered, items.length]);
 
-  // 🧭 Hover Recovery
   useEffect(() => {
     if (isHovered) {
       clearRotation();
       return;
     }
-
-    // Skip resume if video just ended + unhovered too fast
-    if (unhoverBufferRef.current) return;
-
-    // If video is active and NOT ended, do not rotate
-    if (activeItem?.type === "video" && !videoEnded) {
-      clearRotation();
-      return;
-    }
-
-    // If video ended + unhover → rotate
-    if (activeItem?.type === "video" && videoEnded) {
+  
+    const videoEl = videoRef.current;
+  
+    // Video active
+    if (activeItem?.type === "video") {
+  
+      // If video is still playing → don't rotate
+      if (videoEl && !videoEl.paused && !videoEl.ended) {
+        clearRotation();
+        return;
+      }
+  
+      // If video ended OR paused → resume rotation
       startRotation();
       return;
     }
-
-    // Normal images
-    if (activeItem?.type === "image") {
-      startRotation();
-    }
-  }, [isHovered, videoEnded, activeItem?.type]);
-
-
+  
+    // Image - always resume
+    startRotation();
+  
+  }, [isHovered, videoEnded, activeItem?.type]);  
 
   console.log(
     "%c[Gallery] Active Item:",

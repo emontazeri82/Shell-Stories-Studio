@@ -1,6 +1,7 @@
 // pages/cart/index.js
 import Head from "next/head";
 import Link from "next/link";
+import Router from "next/router";
 import { useSelector } from "react-redux";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import CartItem from "@/components/CartItem";
@@ -371,6 +372,7 @@ export default function CartPage() {
               {/* Checkout CTA */}
               <div className="mt-5">
                 <motion.button
+                  onClick={() => Router.push("/checkout")}
                   whileHover={!prefersReducedMotion ? { scale: 1.015 } : undefined}
                   whileTap={!prefersReducedMotion ? { scale: 0.985 } : undefined}
                   className={[

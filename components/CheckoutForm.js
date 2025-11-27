@@ -3,6 +3,8 @@ import { useState } from "react";
 import CustomerInfoForm from "@/components/CustomerInfoForm";
 import CheckoutWithPayPal from "@/components/CheckoutWithPayPal";
 import { validateInfoForm } from "@/utils/validateInfoForm";
+import { calcTotals } from "@/lib/utils/calcTotals";
+
 
 
 export default function CheckoutForm({ cartItems, sessionId }) {
@@ -11,11 +13,12 @@ export default function CheckoutForm({ cartItems, sessionId }) {
   const [deliveryMethod, setDeliveryMethod] = useState("standard");
   const [formErrors, setFormErrors] = useState({});
   const [showPayPal, setShowPayPal] = useState(false);
+  
+  const totals = calcTotals(cartItems, deliveryMethod);
+  
+  // 👉 totalAmount must always be totals.total
+  const totalAmount = totals.total;
 
-  const totalAmount = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -48,7 +51,8 @@ export default function CheckoutForm({ cartItems, sessionId }) {
       ) : (
         <CheckoutWithPayPal
           cartItems={cartItems}
-          totalAmount={totalAmount}
+          totalAmount={total}
+          totals={totals}
           sessionId={sessionId}
           email={email}
           phone={phone}

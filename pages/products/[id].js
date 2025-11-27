@@ -1,5 +1,5 @@
 // pages/products/[id].js
-import Layout from "@/components/Layout";
+import Layout from "@/components/layout/Layout";
 import { useRouter } from "next/router";
 import ProductCard from "@/components/product/ProductCard"; // ← import your client component
 import { getProductPaths } from "@/lib/static-data/getStaticPaths";

@@ -42,8 +42,15 @@ const productsSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
-        state.items = action.payload;
+        console.log("🔎 [Redux] fetchProducts received:", action.payload);
+        if (action.payload?.items) {
+          action.payload.items.forEach(p => {
+            console.log(`➡️ Redux Product ${p.id}: desc="${p.description}"`);
+          });
+        }
+        state.items = action.payload.items;
         state.loading = false;
+        console.log("🟢 Redux final items:", state.items);
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;

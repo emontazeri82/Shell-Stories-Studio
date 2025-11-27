@@ -45,6 +45,11 @@ function ProductCard({ product, onClose }) {
     console.warn("[ProductCard] ⚠️ No product provided");
     return null;
   }
+  console.log("🔎 [ProductCard] FULL PRODUCT:", product);
+  console.log("🔎 product.id:", product.id);
+  console.log("🔎 product.name:", product.name);
+  console.log("🔎 product.description:", product.description);
+
 
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -114,6 +119,8 @@ function ProductCard({ product, onClose }) {
         image_url: product.image_url,
         quantity,
         stock: product.stock,
+        description: product.description,   // ← FIXED
+        category: product.category,         // (optional but recommended)
       })
     );
     setAdded(true);
