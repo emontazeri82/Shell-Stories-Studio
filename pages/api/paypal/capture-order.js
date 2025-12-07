@@ -123,7 +123,22 @@ export default async function handler(req, res) {
         });
       }
     }
-    
+    // 🛑 Prevent duplicate PayPal order processing
+    const existing = await db.get(
+      "SELECT id FROM orders WHERE paypal_order_id = ?",
+      [orderID]
+    );
+
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        reused: true,
+        message: "Order already processed",
+        orderID,
+        savedOrderID: existing.id
+      });
+    }
+
 
     // -------------------------------------------------------
     // 💾 4. Save Order to DB (using SECURE TOTAL)

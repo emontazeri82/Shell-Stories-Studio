@@ -1,64 +1,117 @@
 // components/CheckoutForm.js
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CustomerInfoForm from "@/components/CustomerInfoForm";
-import CheckoutWithPayPal from "@/components/CheckoutWithPayPal";
 import { validateInfoForm } from "@/utils/validateInfoForm";
 import { calcTotals } from "@/lib/utils/calcTotals";
 
-
-
-export default function CheckoutForm({ cartItems, sessionId }) {
+export default function CheckoutForm({
+  cartItems,
+  sessionId,
+  deliveryMethod,
+  setDeliveryMethod,
+  onValidated,
+}) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [deliveryMethod, setDeliveryMethod] = useState("standard");
   const [formErrors, setFormErrors] = useState({});
-  const [showPayPal, setShowPayPal] = useState(false);
-  
+  const isFormValid =
+    email &&
+    deliveryMethod &&
+    Object.keys(validateInfoForm({ email, phone, deliveryMethod })).length === 0;
+
+  // 🟦 Load saved contact info on mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("checkout_email");
+    const savedPhone = localStorage.getItem("checkout_phone");
+
+    if (savedEmail) setEmail(savedEmail);
+    if (savedPhone) setPhone(savedPhone);
+  }, []);
+
+
+  // 🔵 ALWAYS use parent deliveryMethod
   const totals = calcTotals(cartItems, deliveryMethod);
-  
-  // 👉 totalAmount must always be totals.total
-  const totalAmount = totals.total;
 
+  function updateParent(
+    newDeliveryMethod = deliveryMethod,
+    liveEmailArg,
+    livePhoneArg
+  ) {
+    const liveEmail = liveEmailArg ?? email;
+    const livePhone = livePhoneArg ?? phone;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+    const errors = validateInfoForm({
+      email: liveEmail,
+      phone: livePhone,
+      deliveryMethod: newDeliveryMethod,
+    });
 
-    const errors = validateInfoForm({ email, phone, deliveryMethod });
     setFormErrors(errors);
 
-    if (Object.keys(errors).length > 0) {
-      console.log("❌ Validation errors:", errors);
-      alert("Please fix the form before proceeding.");
-      return;
-    }
+    // Save to localStorage
+    if (liveEmail) localStorage.setItem("checkout_email", liveEmail);
+    if (livePhone) localStorage.setItem("checkout_phone", livePhone);
 
-    setShowPayPal(true);
-  };
+    const snapshot = cartItems.map((i) => ({
+      id: i.id,
+      name: i.name,
+      price: i.price,
+      quantity: i.quantity,
+    }));
+
+    const freshIsValid =
+      liveEmail &&
+      newDeliveryMethod &&
+      Object.keys(
+        validateInfoForm({
+          email: liveEmail,
+          phone: livePhone,
+          deliveryMethod: newDeliveryMethod,
+        })
+      ).length === 0;
+
+    onValidated({
+      email: liveEmail,
+      phone: livePhone,
+      deliveryMethod: newDeliveryMethod,
+      sessionId,
+      lockedCartItems: snapshot,
+      totals: calcTotals(cartItems, newDeliveryMethod),
+      isFormValid: freshIsValid,
+    });
+  }
 
   return (
-    <>
-      {!showPayPal ? (
-        <CustomerInfoForm
-          email={email}
-          setEmail={setEmail}
-          phone={phone}
-          setPhone={setPhone}
-          deliveryMethod={deliveryMethod}
-          setDeliveryMethod={setDeliveryMethod}
-          onSubmit={handleSubmit}
-          formErrors={formErrors}
-        />
-      ) : (
-        <CheckoutWithPayPal
-          cartItems={cartItems}
-          totalAmount={total}
-          totals={totals}
-          sessionId={sessionId}
-          email={email}
-          phone={phone}
-          deliveryMethod={deliveryMethod}
-        />
+    <div className="relative">
+      {/* CUSTOMER FORM */}
+      <CustomerInfoForm
+        email={email}
+        setEmail={setEmail}
+        phone={phone}
+        setPhone={setPhone}
+        deliveryMethod={deliveryMethod}
+        setDeliveryMethod={setDeliveryMethod}
+        formErrors={formErrors}
+        updateParent={updateParent}
+      />
+
+      {/* FIXED GLOBAL ERROR BANNER */}
+      {Object.keys(formErrors).length > 0 && (
+        <div className="absolute left-0 right-0 -bottom-12 shake">
+          <p className="text-red-500 text-sm font-medium text-center">
+            Please enter a valid email and choose a delivery method.
+          </p>
+        </div>
       )}
-    </>
+      {Object.keys(formErrors).length === 0 && email && (
+        <div className="absolute left-0 right-0 -bottom-12 shake">
+          <p className="text-green-600 text-sm font-medium text-center">
+            ✓ Information looks good.
+          </p>
+        </div>
+      )}
+
+    </div>
   );
 }
+

@@ -7,15 +7,17 @@ import axios from "axios";
 import { showLoading, hideLoading } from "@/utils/toastloading";
 import { clearCart } from "@/redux/slices/cartSlice";
 import { useDispatch } from "react-redux";
+import { validateInfoForm } from "@/utils/validateInfoForm";
 
 export default function CheckoutWithPayPal({
-  totalAmount,      // MUST be a number (from calcTotals.total)
-  totals,           // (optional) subtotal, tax, deliveryFee, etc.
+  totalAmount,
+  totals,
   cartItems,
   sessionId,
   email,
   phone,
   deliveryMethod,
+  isFormValid
 }) {
   const router = useRouter();
   const dispatch = useDispatch();
@@ -30,7 +32,6 @@ export default function CheckoutWithPayPal({
   console.log("Delivery Method:", deliveryMethod);
   console.log("=========================");
 
-  // ❗ Prevent checkout with empty cart
   if (!cartItems || cartItems.length === 0) {
     return (
       <p className="text-red-500 text-center font-semibold text-base font-sans">
@@ -39,9 +40,6 @@ export default function CheckoutWithPayPal({
     );
   }
 
-  // ------------------------------------------------
-  // 🔵 CREATE PAYPAL ORDER
-  // ------------------------------------------------
   const handleCreateOrder = async () => {
     console.log("[PayPal] Creating order...");
     console.log("[PayPal] Sending to backend:", {
@@ -56,23 +54,19 @@ export default function CheckoutWithPayPal({
 
     try {
       const res = await axios.post("/api/paypal/create-order", {
-        total: totalAmount,  // <- MUST be a number
+        total: totalAmount,
         items: cartItems,
         sessionId,
         deliveryMethod,
-        totals,               // <- full breakdown for backend validation
+        totals,
       });
-
-      console.log("[PayPal] Backend create-order response:", res.data);
 
       const orderId = res?.data?.id;
       if (!orderId) {
         toast.error("❌ Missing PayPal order ID");
-        console.error("[PayPal] No order ID returned:", res.data);
         return null;
       }
 
-      console.log("[PayPal] Order created:", orderId);
       return orderId;
     } catch (err) {
       console.error("[PayPal] Create Order Error:", err);
@@ -83,9 +77,6 @@ export default function CheckoutWithPayPal({
     }
   };
 
-  // ------------------------------------------------
-  // 🟢 CAPTURE PAYPAL ORDER
-  // ------------------------------------------------
   const handleCaptureOrder = async (data) => {
     console.log("[PayPal] Approve received:", data);
 
@@ -103,17 +94,13 @@ export default function CheckoutWithPayPal({
         totals,
       });
 
-      console.log("[PayPal] Capture Order response:", res.data);
-
       if (res?.data?.success) {
         toast.success("✅ Payment successful!");
         dispatch(clearCart());
         localStorage.removeItem("cartItems");
-
         router.push("/thank-you");
       } else {
         toast.error("❌ Payment failed.");
-        console.error("[PayPal] Payment failed response:", res?.data);
       }
     } catch (err) {
       console.error("[PayPal] Capture Error:", err);
@@ -123,41 +110,51 @@ export default function CheckoutWithPayPal({
     }
   };
 
-  // ------------------------------------------------
-  // 🟡 PAYPAL UI RENDER
-  // ------------------------------------------------
   return (
-    <PayPalScriptProvider
-      options={{
-        "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
-        components: "buttons",
-        currency: "USD",
-        intent: "capture",
-        "disable-funding": "", // allow cards + PayPal
-      }}
-    >
-      <PayPalButtons
-        style={{
-          layout: "vertical",
-          label: "paypal",
-          shape: "rect",
-          color: "gold",
-          height: 45,
+    <>
+      <PayPalScriptProvider
+        options={{
+          "client-id": process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+          components: "buttons",
+          currency: "USD",
+          intent: "capture",
+          "disable-funding": "",
         }}
-        createOrder={handleCreateOrder}
-        onApprove={handleCaptureOrder}
-        onError={(err) => {
-          hideLoading();
-          console.error("[PayPal] Error:", err);
-          toast.error("❌ Something went wrong with PayPal.");
-        }}
-        onCancel={() => {
-          hideLoading();
-          console.warn("[PayPal] Payment Cancelled.");
-          toast("⚠️ Payment was cancelled.");
-        }}
-      />
-    </PayPalScriptProvider>
+      >
+        <PayPalButtons
+          style={{
+            layout: "vertical",
+            label: "paypal",
+            shape: "rect",
+            color: "gold",
+            height: 45,
+          }}
+          disabled={!isFormValid}   // ⛔ PREVENT invalid checkout
+          createOrder={async () => {
+            if (!isFormValid) {
+              toast.error("Please complete your contact information.");
+              return null;
+            }
+            const orderId = await handleCreateOrder();
+            return orderId;
+          }}
+
+          onApprove={handleCaptureOrder}
+
+          onError={(err) => {
+            hideLoading();
+            console.error("[PayPal] Error:", err);
+            toast.error("❌ Something went wrong with PayPal.");
+          }}
+
+          onCancel={() => {
+            hideLoading();
+            toast("⚠️ Payment was cancelled.");
+          }}
+        />
+      </PayPalScriptProvider>
+    </>
+
   );
 }
 

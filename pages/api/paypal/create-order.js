@@ -1,7 +1,7 @@
 // pages/api/paypal/create-order.js
 import paypal from "@paypal/checkout-server-sdk";
 import { calcTotals } from "@/lib/utils/calcTotals";  // ✅ server-side totals
-
+import { getDb } from "@/lib/db/sqlite";
 // Setup PayPal environment and client
 const environment = new paypal.core.SandboxEnvironment(
   process.env.PAYPAL_CLIENT_ID,
@@ -25,6 +25,42 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid items" });
     }
 
+    for (const item of items) {
+      if (!item.id || !item.name || item.price == null || item.quantity == null) {
+        return res.status(400).json({
+          error: "Malformed item received",
+          item
+        });
+      }
+
+      if (item.quantity < 1 || item.quantity > 20) {
+        return res.status(400).json({
+          error: "Invalid quantity",
+          item
+        });
+      }
+    }
+    // ✅ ADD THE DB VALIDATION HERE (this is the correct location)
+    const db = await getDb();
+
+    for (const item of items) {
+      const product = await db.get(
+        "SELECT price FROM products WHERE id = ?",
+        [item.id]
+      );
+
+      if (!product) {
+        return res.status(400).json({ error: `Product not found: ${item.id}` });
+      }
+
+      if (Number(product.price) !== Number(item.price)) {
+        return res.status(400).json({
+          error: `Price mismatch for ${item.id}`,
+          expected: product.price,
+          received: item.price
+        });
+      }
+    }
     // ---------------------------------------------------------
     // 🔒 1. SERVER-SIDE TOTALS (fraud-safe)
     // ---------------------------------------------------------

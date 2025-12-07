@@ -7,26 +7,34 @@ import OrderCard from './OrderCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
 
-export default function AdminOrdersPanel() {
-    const [orders, setOrders] = useState([]);
+export default function AdminOrdersPanel({ initialOrders = []}) {
+    const [orders, setOrders] = useState(initialOrders);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [filteredOrders, setFilteredOrders] = useState([]);
+    const [filteredOrders, setFilteredOrders] = useState(initialOrders);
     const [expandedRowId, setExpandedRowID] = useState(null);
 
     const toggleExpand = (id) => {
         setExpandedRowID(prev => (prev === id ? null : id));
     }
-
     useEffect(() => {
+        // If SSR sent fresh data, skip client fetch
+        if (initialOrders.length > 0) {
+            setOrders(initialOrders);
+            setFilteredOrders(initialOrders);
+            setLoading(false);
+            return; // IMPORTANT
+        }    
+
         const fetchOrders = async () => {
             try {
                 const res = await axios.get('/api/admin/orders');
                 console.log('✅ Orders response:', res.data);
 
                 const data = res.data;
-                const orderList = Array.isArray(data?.data?.orders) ? data.data.orders : [];
-
+                const orderList = Array.isArray(data?.orders)
+                    ? data.orders
+                    : [];
 
                 setOrders(orderList);
                 setFilteredOrders(orderList);
@@ -66,7 +74,7 @@ export default function AdminOrdersPanel() {
 
             {Array.isArray(filteredOrders) && filteredOrders.length > 0 ? (
                 <>
-                    <div className="grid gap-4 lg:hidden">
+                    <div className="grid gap-4 md:hidden">
                         <AnimatePresence mode="popLayout">
                             {filteredOrders.map((order) => (
                                 <motion.div

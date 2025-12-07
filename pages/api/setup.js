@@ -8,7 +8,7 @@ const dbPath = path.join(process.cwd(), 'data', 'shells_shop.db');
 
 async function openDB() {
   const db = await open({ filename: dbPath, driver: sqlite3.Database });
-  await db.exec('PRAGMA foreign_keys = ON');
+  await db.exec('PRAGMA foreign_keys = ON'); // ✅ Fix 1: ensure FK ON
   return db;
 }
 
@@ -17,22 +17,26 @@ async function hasColumn(db, table, col) {
   const rows = await db.all(`PRAGMA table_info(${table});`);
   return rows.some(r => r.name === col);
 }
+
 async function ensureColumn(db, table, colDef) {
   const name = colDef.trim().split(/\s+/)[0];
   if (!(await hasColumn(db, table, name))) {
     await db.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef};`);
   }
 }
+
 async function ensureIndex(db, name, sql) {
-  // Use IF NOT EXISTS in SQL; wrap in try/catch so re-runs don't explode
-  try { await db.exec(sql); } catch (e) {
-    console.warn(`⚠️ Index ${name} skipped:`, e?.message || e);
+  try {
+    await db.exec(sql);
+  } catch (e) {
+    console.warn(`⚠️ Index ${name} skipped:`, e?.message);
   }
 }
 
 /* ---------- create + migrate schema ---------- */
 async function createTables(db) {
-  // products (kept compatible with your app)
+
+  /* ------------------ PRODUCTS TABLE ------------------ */
   await db.exec(`
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,17 +53,14 @@ async function createTables(db) {
     );
   `);
 
-  // 2️⃣ Add updated_at column if missing
-  const columns = await db.all(`PRAGMA table_info(products)`);
-  const hasUpdatedAt = columns.some((c) => c.name === "updated_at");
-
-  if (!hasUpdatedAt) {
-    console.log("🪄 Adding missing 'updated_at' column...");
+  // ✅ Fix 2: add updated_at column if missing
+  const prodCols = await db.all(`PRAGMA table_info(products)`);
+  if (!prodCols.some(c => c.name === "updated_at")) {
     await db.exec(`ALTER TABLE products ADD COLUMN updated_at TEXT;`);
     await db.exec(`UPDATE products SET updated_at = datetime('now');`);
   }
 
-  // 3️⃣ Create trigger to auto-update updated_at on change
+  // ✅ Fix 3: trigger for updated_at
   await db.exec(`
     CREATE TRIGGER IF NOT EXISTS products_update_timestamp
     AFTER UPDATE ON products
@@ -71,7 +72,7 @@ async function createTables(db) {
     END;
   `);
 
-  // product_media (now includes is_primary)
+  /* ------------------ PRODUCT MEDIA TABLE ------------------ */
   await db.exec(`
     CREATE TABLE IF NOT EXISTS product_media (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,28 +92,28 @@ async function createTables(db) {
     );
   `);
 
-  // If the table already existed (from your older setup), add any missing columns
+  // Fix 4: ensure missing columns exist if older schema
   await ensureColumn(db, 'product_media', 'sort_order INTEGER NOT NULL DEFAULT 0');
   await ensureColumn(db, 'product_media', 'is_primary INTEGER NOT NULL DEFAULT 0');
-  // Optional: add these only if you need them and they’re missing
   await ensureColumn(db, 'product_media', 'alt TEXT');
   await ensureColumn(db, 'product_media', 'format TEXT');
   await ensureColumn(db, 'product_media', 'width INTEGER');
   await ensureColumn(db, 'product_media', 'height INTEGER');
   await ensureColumn(db, 'product_media', 'duration REAL');
 
-  // Backfill NULLs (defensive; ALTER adds defaults for new rows only)
+  // Fix 5: backfill NULLs safely
   await db.exec(`
     UPDATE product_media SET sort_order = COALESCE(sort_order, 0) WHERE sort_order IS NULL;
     UPDATE product_media SET is_primary = COALESCE(is_primary, 0) WHERE is_primary IS NULL;
   `);
 
-  // Indexes (order & lookups)
+  // Fix 6: correct indexes
   await ensureIndex(
     db,
     'idx_pm_product_id',
     `CREATE INDEX IF NOT EXISTS idx_pm_product_id ON product_media(product_id);`
   );
+
   await ensureIndex(
     db,
     'idx_pm_primary_order',
@@ -120,18 +121,7 @@ async function createTables(db) {
        ON product_media(product_id, is_primary, sort_order, id);`
   );
 
-  // Optional (enforce at most one primary per product at the DB level).
-  // Commented out by default to avoid failures if you temporarily have 2 primaries.
-  // When you’re ready (no duplicates), uncomment:
-  /*
-  await ensureIndex(
-    db,
-    'uniq_pm_one_primary',
-    "CREATE UNIQUE INDEX IF NOT EXISTS uniq_pm_one_primary ON product_media(product_id) WHERE is_primary = 1;"
-  );
-  */
-
-  // other tables (unchanged)
+  /* ------------------ CART ITEMS TABLE ------------------ */
   await db.exec(`
     CREATE TABLE IF NOT EXISTS cart_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,7 +132,10 @@ async function createTables(db) {
       added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
+  `);
 
+  /* ------------------ ORDERS TABLE ------------------ */
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       customer_id INTEGER,
@@ -161,8 +154,10 @@ async function createTables(db) {
       delivered_status TEXT DEFAULT 'Not Delivered',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-    
+  `);
 
+  /* ------------------ ORDER ITEMS TABLE ------------------ */
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS order_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id INTEGER NOT NULL,
@@ -172,7 +167,10 @@ async function createTables(db) {
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
+  `);
 
+  /* ------------------ SHIPPING DETAILS TABLE ------------------ */
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS shipping_details (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id INTEGER NOT NULL,
@@ -183,7 +181,19 @@ async function createTables(db) {
       delivered_at TIMESTAMP,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
     );
+  `);
 
+  // ⭐⭐⭐ CRITICAL FIX ⭐⭐⭐
+  // Prevent duplicate shipping rows
+  await ensureIndex(
+    db,
+    'uniq_shipping_order',
+    `CREATE UNIQUE INDEX IF NOT EXISTS uniq_shipping_order
+       ON shipping_details(order_id);`
+  );
+
+  /* ------------------ USERS TABLE ------------------ */
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL UNIQUE,
@@ -195,6 +205,7 @@ async function createTables(db) {
   `);
 }
 
+/* ------------------ ADMIN USER ------------------ */
 async function populateRoles(db) {
   const hashedPassword = await argon2.hash('ghazalgxz123');
   await db.run(
@@ -204,8 +215,8 @@ async function populateRoles(db) {
   console.log('✅ Admin user inserted (if not exists)');
 }
 
+/* ------------------ API HANDLER ------------------ */
 export default async function handler(req, res) {
-  // 🚫 Block access in production
   if (process.env.NODE_ENV !== 'development') {
     return res.status(403).json({ error: 'Not allowed in production' });
   }
@@ -214,8 +225,7 @@ export default async function handler(req, res) {
     const db = await openDB();
     await createTables(db);
     await populateRoles(db);
-    await populateProducts(db);
-    res.status(200).json({ message: 'Database setup complete (product_media has is_primary & indexes)' });
+    res.status(200).json({ message: 'Database setup complete (safe migrations applied)' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database setup failed' });

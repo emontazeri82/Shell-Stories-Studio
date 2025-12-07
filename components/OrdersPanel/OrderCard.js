@@ -2,6 +2,7 @@
 "use client";
 
 import { format } from "date-fns";
+import ShippingBadge from "./ShippingBadge";
 
 export default function OrderCard({ order }) {
   return (
@@ -30,9 +31,11 @@ export default function OrderCard({ order }) {
       <p className="text-sm text-gray-700 dark:text-gray-200">
         <span className="font-medium">Total:</span> ${order.total_price.toFixed(2)}
       </p>
-      <p className="text-sm text-gray-700 dark:text-gray-200">
-        <span className="font-medium">Status:</span> {order.delivered_status}
+      <p className="text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2">
+        <span className="font-medium">Shipping:</span>
+        <ShippingBadge status={order.shipping_status} />
       </p>
+
       <p className="text-sm text-gray-700 dark:text-gray-200">
         <span className="font-medium">Payment:</span> {order.payment_status || "Unknown"}
       </p>
@@ -44,12 +47,12 @@ export default function OrderCard({ order }) {
         <span className="font-medium">Tracking:</span> {order.tracking_number || "N/A"}
       </p>
 
-      <button
+      {/*<button
         className="mt-4 w-full text-indigo-600 hover:underline text-sm font-semibold"
         onClick={() => alert(`Viewing details for Order #${order.id}`)}
       >
         View Details
-      </button>
+      </button>*/}
     </div>
   );
 }

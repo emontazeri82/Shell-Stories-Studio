@@ -2,7 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/products": "pages/products.js",
-  "/admin/admin_inventory": "pages/admin/admin_inventory.js",
-  "/cart": "pages/cart.js"
+  "/admin/orders": "pages/admin/orders.js",
+  "/": "pages/index.js",
+  "/api/auth/[...nextauth]": "pages/api/auth/[...nextauth].js"
 }

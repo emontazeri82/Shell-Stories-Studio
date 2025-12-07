@@ -36,8 +36,11 @@ export default function Layout({ title = "Shell Stories Studio", children }) {
           <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_120px_rgba(0,0,0,0.04)]"></div>
 
           {/* PAGE CONTENT */}
+          {/* PAGE CONTENT */}
           <div className="relative z-10">
-            {children}
+            <div className="max-w-6xl mx-auto w-full px-4">
+              {children}
+            </div>
           </div>
         </main>
         <Footer />

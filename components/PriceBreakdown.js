@@ -10,7 +10,7 @@ export default function PriceBreakdown({
   onCheckout,
   onClear
 }) {
-  
+
   // If totals is passed (checkout page), use it.
   // If not, only calculate subtotal for cart/cart panel.
   const subtotal = items.reduce(
@@ -39,10 +39,17 @@ export default function PriceBreakdown({
 
           <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
             <span className="font-medium">Delivery</span>
-            <span className="font-semibold">
+            <span className="font-semibold text-green-600">
               {totals.deliveryFee === 0 ? "Free" : `$${totals.deliveryFee.toFixed(2)}`}
             </span>
           </div>
+
+          {totals.discount > 0 && (
+            <div className="flex justify-between text-sm text-emerald-600 font-medium">
+              <span>Discount</span>
+              <span>- ${totals.discount.toFixed(2)}</span>
+            </div>
+          )}
 
           <div className="flex justify-between text-lg font-bold border-t pt-2 border-gray-200 dark:border-gray-600 dark:text-white">
             <span>Total</span>

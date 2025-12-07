@@ -10,6 +10,8 @@ import { useRef, useEffect } from "react";
 import { useClickOutside } from "@/components/useClickOutside";
 import CartSummary from "./CartSummary";
 import { ShoppingCartIcon } from "@heroicons/react/24/outline";
+import { setCartItems } from "@/redux/slices/cartSlice";
+import axios from "axios";
 
 export default function CartPanel({ isOpen, onClose }) {
   const dispatch = useDispatch();
@@ -36,6 +38,29 @@ export default function CartPanel({ isOpen, onClose }) {
     return () => {
       document.body.style.overflow = "";
     };
+  }, [isOpen]);
+  useEffect(() => {
+    async function refreshCart() {
+      if (!isOpen || items.length === 0) return;
+
+      try {
+        const res = await axios.post("/api/cart/refresh", { items });
+        const updated = res.data.updated;
+
+        const prevJSON = JSON.stringify(items);
+        const nextJSON = JSON.stringify(updated);
+
+        if (prevJSON !== nextJSON) {
+          dispatch(setCartItems(updated));
+        }
+
+        console.log("🔄 CartPanel refreshed from DB:", updated);
+      } catch (err) {
+        console.error("❌ CartPanel failed refresh", err);
+      }
+    }
+
+    refreshCart();
   }, [isOpen]);
 
 
@@ -69,7 +94,7 @@ export default function CartPanel({ isOpen, onClose }) {
             <button
               ref={closeBtnRef}
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-300 drak:hover:text-white text-2xl font-poppins"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white text-2xl font-poppins"
               aria-label="Close Cart"
             >
               &times;

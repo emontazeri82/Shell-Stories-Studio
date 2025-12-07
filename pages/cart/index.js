@@ -2,10 +2,11 @@
 import Head from "next/head";
 import Link from "next/link";
 import Router from "next/router";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { setCartItems } from "@/redux/slices/cartSlice";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import CartItem from "@/components/CartItem";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   LockClosedIcon,
   TruckIcon,
@@ -14,11 +15,14 @@ import {
 } from "@heroicons/react/24/outline";
 import dynamic from "next/dynamic";
 import { SHOW_FREE_SHIP_BAR, FREE_SHIP_THRESHOLD } from "@/lib/constant";
+import axios from "axios";
+
+const FavoritesRail = dynamic(() => import("@/components/favorites/FavoritesRail"), { ssr: false });
 
 export default function CartPage() {
+  const dispatch = useDispatch();
   const { items } = useSelector((s) => s.cart);
   const prefersReducedMotion = useReducedMotion();
-  const FavoritesRail = dynamic(() => import("@/components/favorites/FavoritesRail"), { ssr: false });
 
   const subtotal = useMemo(
     () =>
@@ -63,6 +67,33 @@ export default function CartPage() {
   };
   const removePromo = (code) =>
     setAppliedPromos((p) => p.filter((c) => c !== code));
+  useEffect(() => {
+    async function refreshCart() {
+      if (!items.length) return;
+
+      try {
+        const res = await axios.post("/api/cart/refresh", { items });
+        const updated = res.data.updated;
+
+        // OPTIONAL:
+        // You can dispatch a Redux update here
+        // dispatch(updateCart(updated));
+        const prevJSON = JSON.stringify(items);
+        const nextJSON = JSON.stringify(updated);
+
+        if (prevJSON !== nextJSON) {
+          dispatch(setCartItems(updated));
+        }
+
+
+        console.log("🔄 Cart refreshed:", updated);
+      } catch (err) {
+        console.error("❌ Failed to refresh cart", err);
+      }
+    }
+
+    refreshCart();
+  }, []);
 
   // Empty state
   if (!items.length) {
@@ -106,7 +137,7 @@ export default function CartPage() {
         <title>Your Cart — Shell Stories Studio</title>
       </Head>
 
-      <main className="relative mx-auto max-w-7xl px-4 py-10">
+      <main className="relative mx-auto max-w-6xl px-4 py-10">
         {/* ambient gradient glow */}
         <div className="pointer-events-none absolute inset-x-0 -top-40 h-[380px] bg-gradient-to-b from-indigo-500/25 via-fuchsia-500/15 to-transparent blur-3xl" />
 
@@ -265,24 +296,41 @@ export default function CartPage() {
         {/* Main grid */}
         <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Items */}
-          <section className="lg:col-span-2 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/70 dark:bg-zinc-900/70 backdrop-blur p-4 sm:p-6">
-            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {items.map((item) => (
-                <li key={item.id} className="py-4">
-                  <CartItem item={item} />
-                </li>
-              ))}
-            </ul>
+          {/* CART ITEMS – centered & premium width */}
+          <div className="lg:col-span-2 flex flex-col items-center">
 
-            {/* curated favorites from DB + edge fade */}
-            <div className="relative group/rail mt-6">
-              <FavoritesRail />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-10
-                  bg-gradient-to-l from-white/80 dark:from-zinc-900/80 to-transparent
-                  rounded-r-xl opacity-0 group-hover/rail:opacity-100 transition-opacity"></div>
+            <section
+              className="
+                w-full 
+                max-w-2xl 
+                rounded-2xl 
+                border border-zinc-200/60 dark:border-zinc-800/60
+                bg-white/70 dark:bg-zinc-900/70 
+                backdrop-blur 
+                p-4 sm:p-6 
+                shadow-sm
+              "
+            >
+              <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                {items.map((item) => (
+                  <li key={item.id} className="py-4">
+                    <CartItem item={item} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {/* FAVORITES RAIL — OUTSIDE items (no flicker, no re-render) */}
+            <div className="relative group/rail w-full max-w-2xl mt-10">
+              <FavoritesRail key="favorites-rail" />
+              <div
+                className="pointer-events-none absolute inset-y-0 right-0 w-10
+               bg-gradient-to-l from-white/80 dark:from-zinc-900/80 to-transparent
+               rounded-r-xl opacity-0 group-hover/rail:opacity-100 transition-opacity"
+              />
             </div>
 
-          </section>
+          </div>
 
           {/* Summary (sticky) */}
           <aside className="lg:col-span-1">

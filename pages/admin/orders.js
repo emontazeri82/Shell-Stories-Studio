@@ -2,9 +2,11 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../api/auth/[...nextauth]";
 import AdminOrdersPanel from "@/components/OrdersPanel/AdminOrdersPanel";
+import axios from "axios";
 
 /* ──────────────────────────────
  * Server-Side Protection (ADMIN-only)
+ * + Server-side Orders Fetch (Axios!)
  * ──────────────────────────────*/
 export async function getServerSideProps(context) {
   const session = await getServerSession(context.req, context.res, authOptions);
@@ -13,6 +15,7 @@ export async function getServerSideProps(context) {
   const role = String(session?.user?.role || "").toUpperCase();
   if (!session || role !== "ADMIN") {
     console.warn("⛔ Unauthorized access attempt to /admin/orders");
+
     return {
       redirect: {
         destination: `/admin/login?callbackUrl=${encodeURIComponent(
@@ -23,10 +26,32 @@ export async function getServerSideProps(context) {
     };
   }
 
-  // ✅ Disable caching for sensitive data
+  // 🔒 Disable caching for admin data
   context.res.setHeader("Cache-Control", "no-store");
 
-  // ✅ Clean session to avoid undefined/null leaks
+  // 🌍 Build absolute URL for Axios SSR
+  const host = context.req.headers.host;
+  const baseUrl = `http://${host}`;
+
+  let initialOrders = [];
+
+  try {
+    // ⭐ Axios SSR request
+    console.log("[SSR] Fetching orders via Axios:", `${baseUrl}/api/admin/orders`);
+
+    const res = await axios.get(`${baseUrl}/api/admin/orders`, {
+      headers: {
+        Cookie: context.req.headers.cookie || "",
+      },
+    });
+
+    initialOrders = Array.isArray(res.data?.orders) ? res.data.orders : [];
+  } catch (err) {
+    console.error("❌ SSR Axios fetch failed:", err?.response?.data || err);
+    initialOrders = [];
+  }
+
+  // Clean session object
   const safeSession = {
     ...session,
     user: {
@@ -39,20 +64,24 @@ export async function getServerSideProps(context) {
   };
 
   return {
-    props: { session: safeSession },
+    props: {
+      session: safeSession,
+      initialOrders: initialOrders, // ← PASS SSR ORDERS TO COMPONENT
+    },
   };
 }
 
 /* ──────────────────────────────
  * Admin Orders Page
  * ──────────────────────────────*/
-export default function AdminOrdersPage({ session }) {
+export default function AdminOrdersPage({ session, initialOrders }) {
   return (
     <div className="p-8">
       <h1 className="text-3xl font-semibold mb-6">
         🧾 Admin Orders Dashboard
       </h1>
-      <AdminOrdersPanel session={session} />
+
+      <AdminOrdersPanel session={session} initialOrders={initialOrders} />
     </div>
   );
 }
