@@ -161,7 +161,46 @@ export default async function handler(req, res) {
       console.error("❌ Failed to save order to DB:", saveResult.error);
       return res.status(500).json({ error: "Payment captured, but order not saved" });
     }
+    // -------------------------------------------------------
+    // 🚚 5. Save Shipping Address (REQUIRED except pickup)
+    // -------------------------------------------------------
+    if (deliveryMethod !== "pickup") {
+      const shippingInfo = order.purchase_units?.[0]?.shipping;
 
+      if (!shippingInfo || !shippingInfo.address) {
+        throw new Error("Shipping address required but missing from PayPal");
+      }
+
+      const addr = shippingInfo.address;
+
+      await db.run(
+        `
+    INSERT INTO order_shipping_addresses (
+      order_id,
+      name,
+      phone,
+      address_1,
+      address_2,
+      city,
+      state,
+      postal_code,
+      country,
+      source
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'paypal')
+    `,
+        [
+          saveResult.orderId,
+          shippingInfo.name?.full_name || customerName || "Guest",
+          phone || null,
+          addr.address_line_1,
+          addr.address_line_2 || null,
+          addr.admin_area_2,          // city
+          addr.admin_area_1 || null,  // state
+          addr.postal_code,
+          addr.country_code
+        ]
+      );
+    }
     console.log("✅ PayPal Order Captured and Saved:", {
       orderID,
       payerEmail: email,

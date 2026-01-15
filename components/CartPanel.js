@@ -15,8 +15,29 @@ import axios from "axios";
 
 export default function CartPanel({ isOpen, onClose }) {
   const dispatch = useDispatch();
+
   const items = useSelector((state) => state.cart.items);
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const products = useSelector((state) => state.products.items || []);
+
+  const total = items.reduce((sum, item) => {
+    const product = products.find((p) => p.id === item.id);
+    console.log("🛒 CartItem debug", {
+      cartItemId: item.id,
+      productsInRedux: products.length,
+      productFromRedux: product,
+    });
+    const discountActive = Number(product?.discount_active) === 1;
+    const discountPercent = Number(product?.discount_percent || 0);
+
+    const basePrice = Number(product?.price ?? item.price ?? 0);
+
+    const unitPrice =
+      discountActive && discountPercent > 0
+        ? basePrice - (basePrice * discountPercent) / 100
+        : basePrice;
+
+    return sum + unitPrice * item.quantity;
+  }, 0);
   const closeBtnRef = useRef();
   const panelRef = useRef();
   const router = useRouter();

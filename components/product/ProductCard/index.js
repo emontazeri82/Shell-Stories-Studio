@@ -60,6 +60,16 @@ function ProductCard({ product, onClose }) {
     (state) => state.cart.items.find((i) => i.id === product.id),
     (a, b) => a?.quantity === b?.quantity
   );
+  const price = Number(product.price || 0);
+
+  const hasDiscount =
+    Number(product.discount_active) === 1 &&
+    Number(product.discount_percent) > 0;
+
+  const discountedPrice = hasDiscount
+    ? Math.round(price * (1 - product.discount_percent / 100))
+    : price;
+
 
   useClickOutside(modalRef, onClose);
 
@@ -240,9 +250,38 @@ function ProductCard({ product, onClose }) {
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                   {product.name}
                 </h1>
-                <p className="text-2xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  ${Number(product.price || 0).toFixed(2)}
-                </p>
+                <div className="mb-4">
+                  {hasDiscount ? (
+                    <div className="flex items-center gap-3">
+                      {/* Original price */}
+                      <span className="text-base text-zinc-400 line-through">
+                        ${price.toFixed(2)}
+                      </span>
+                      {/* Discounted price (Strong Indigo) */}
+                      <span className="text-2xl font-extrabold text-red-700 dark:text-red-300">
+                        ${discountedPrice.toFixed(2)}
+                      </span>
+
+                      {/* Subtle discount badge */}
+                      <span className="
+                        px-2.5 py-1 text-xs font-medium
+                        bg-indigo-100 text-indigo-700
+                        rounded-full
+                      ">
+                        −{product.discount_percent}%
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="
+                      text-2xl font-extrabold
+                      bg-gradient-to-r from-indigo-600 to-purple-600
+                      bg-clip-text text-transparent
+                    ">
+                      ${price.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+
                 <p className="mb-6 text-gray-700 dark:text-gray-300 leading-relaxed">
                   {product.description}
                 </p>

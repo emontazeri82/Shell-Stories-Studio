@@ -1,10 +1,11 @@
 import ErrorBoundary from "@/components/ErrorBoundary";
 import "@/styles/globals.css";
-import { Provider } from 'react-redux';
-import { store } from '../redux/store';
+import { Provider } from "react-redux";
+import { store } from "../redux/store";
 import { Toaster } from "react-hot-toast";
 import ThemeApplier from "@/components/ThemeApplier";
 import AppInitializer from "@/utils/sessionInitializer";
+import ProductsInitializer from "@/components/ProductsInitializer";
 import {
   poppins,
   inter,
@@ -15,7 +16,6 @@ import {
 } from "@/utils/fonts";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
 import { usePersistentCart } from "@/hooks/usePersistentCart";
 import { SessionProvider } from "next-auth/react";
 
@@ -30,12 +30,14 @@ function App({ Component, pageProps: { session, ...pageProps } }) {
   return (
     <div
       className={`
-        ${poppins.variable} ${inter.variable} ${playfair.variable} ${quicksand.variable}
-        ${merriweather.variable} ${josefin.variable}
+        ${poppins.variable} ${inter.variable} ${playfair.variable}
+        ${quicksand.variable} ${merriweather.variable} ${josefin.variable}
       `}
     >
       <SessionProvider session={session}>
         <Provider store={store}>
+          {/* ✅ MUST be here */}
+          <ProductsInitializer />
           <QueryClientProvider client={queryClient}>
             <ThemeApplier>
               <ErrorBoundary>
@@ -54,4 +56,5 @@ function App({ Component, pageProps: { session, ...pageProps } }) {
 }
 
 export default App;
+
 

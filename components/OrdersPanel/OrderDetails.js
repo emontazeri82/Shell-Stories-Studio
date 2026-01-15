@@ -20,7 +20,25 @@ export default function OrderDetails({ order }) {
       {/* ORDER INFO */}
       <div className="mb-4 space-y-1">
         <div><strong>Phone:</strong> {order.phone || "N/A"}</div>
-        <div><strong>Address:</strong> {order.shipping_address || "N/A"}</div>
+        <div className="mt-4">
+          <h4 className="font-semibold text-gray-800 mb-1">Shipping Address</h4>
+          {order.address_1 ? (
+            <div className="text-sm text-gray-600 leading-relaxed">
+              <p>{order.shipping_name}</p>
+              <p>{order.address_1}</p>
+              {order.address_2 && <p>{order.address_2}</p>}
+              <p>
+                {order.city}, {order.state} {order.postal_code}
+              </p>
+              <p>{order.country}</p>
+              <p className="italic text-xs text-gray-400">
+                Source: {order.shipping_source}
+              </p>
+            </div>
+          ) : (
+            <p className="italic text-gray-400 text-sm">Pickup — no shipping address</p>
+          )}
+        </div>
         <div><strong>Billing Address:</strong> {order.billing_address || "N/A"}</div>
         <div><strong>Payment Status:</strong> {order.payment_status || "Unknown"}</div>
         <div><strong>Payment Method:</strong> {order.payment_method || "N/A"}</div>

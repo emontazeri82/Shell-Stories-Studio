@@ -10,10 +10,10 @@ globalThis.__BUILD_MANIFEST = {
   "rootMainFiles": [],
   "rootMainFilesTree": {},
   "pages": {
-    "/": [
+    "/[...catchAll]": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/index.js"
+      "static/chunks/pages/[...catchAll].js"
     ],
     "/_app": [
       "static/chunks/webpack.js",
@@ -25,10 +25,20 @@ globalThis.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/admin/orders": [
+    "/admin/admin_inventory": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/admin/orders.js"
+      "static/chunks/pages/admin/admin_inventory.js"
+    ],
+    "/cart": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/cart.js"
+    ],
+    "/checkout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/checkout.js"
     ]
   },
   "ampFirstPages": []

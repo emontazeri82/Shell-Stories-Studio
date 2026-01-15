@@ -25,8 +25,20 @@ export default function OrderCard({ order }) {
       <p className="text-sm text-gray-700 dark:text-gray-200">
         <span className="font-medium">Phone:</span> {order.phone || "N/A"}
       </p>
-      <p className="text-sm text-gray-700 dark:text-gray-200 truncate">
-        <span className="font-medium">Shipping:</span> {order.shipping_address || "N/A"}
+      <p className="text-sm text-gray-700 dark:text-gray-200">
+        <span className="font-medium">Shipping:</span>{" "}
+        {order.address_1 ? (
+          <>
+            {order.address_1}
+            {order.address_2 && `, ${order.address_2}`}
+            <br />
+            {order.city}, {order.state} {order.postal_code}
+            <br />
+            {order.country}
+          </>
+        ) : (
+          <span className="italic text-gray-400">Store Pickup</span>
+        )}
       </p>
       <p className="text-sm text-gray-700 dark:text-gray-200">
         <span className="font-medium">Total:</span> ${order.total_price.toFixed(2)}

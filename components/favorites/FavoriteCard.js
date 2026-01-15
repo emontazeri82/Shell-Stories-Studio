@@ -7,6 +7,15 @@ import { motion, useReducedMotion } from "framer-motion";
 function FavoriteCard({ product, onAdd }) {
   const prefersReducedMotion = useReducedMotion();
   const p = product;
+  const basePrice = Number(p.price || 0);
+  const percent = Number(p.discount_percent || 0);
+
+  const hasDiscount =
+    Number(p.discount_active) === 1 && percent > 0;
+
+  const discountedPrice = hasDiscount
+    ? basePrice - (basePrice * percent) / 100
+    : basePrice;
 
   return (
     <motion.div
@@ -26,7 +35,28 @@ function FavoriteCard({ product, onAdd }) {
         </span>
       </div>
       <div className="mt-3 text-sm font-medium line-clamp-2">{p.name}</div>
-      <div className="text-xs text-zinc-500">${Number(p.price || 0).toFixed(2)}</div>
+      <div className="mt-1 h-[36px] flex flex-col justify-center">
+        {hasDiscount ? (
+          <>
+            <div className="text-xs text-zinc-400 line-through leading-tight">
+              ${basePrice.toFixed(2)}
+            </div>
+            <div className="text-sm font-bold text-zinc-900 dark:text-white leading-tight">
+              ${discountedPrice.toFixed(2)}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* invisible placeholder keeps height consistent */}
+            <div className="text-xs invisible leading-tight">
+              ${basePrice.toFixed(2)}
+            </div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-white leading-tight">
+              ${basePrice.toFixed(2)}
+            </div>
+          </>
+        )}
+      </div>
       <button
         onClick={onAdd}
         aria-label={`Add ${p.name} to cart`}

@@ -217,6 +217,104 @@ export default function ProductList({ searchQuery, sortOrder }) {
       queryClient.invalidateQueries({ queryKey });
     },
   });
+  // ────────────────────────────────
+  // Toggle Discount Status (Axios)
+  // ────────────────────────────────
+  const toggleDiscountMutation = useMutation({
+    mutationFn: async ({ id, discountActive }) => {
+      const url = `/api/admin/manage_products/${id}`;
+      console.log("[Axios] Calling:", url);
+      console.log("📦 Payload:", { discount_active: discountActive });
+
+      const { data } = await axios.patch(
+        url,
+        { discount_active: discountActive ? 1 : 0 },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (!data?.success) {
+        throw new Error(data.message || "Failed to toggle discount");
+      }
+
+      return data;
+    },
+
+    // ⚡ Optimistic UI update
+    onMutate: async ({ id, discountActive }) => {
+      console.log("[RQ] ⚡ Optimistic discount toggle:", id, discountActive);
+      await queryClient.cancelQueries({ queryKey });
+
+      const previous = queryClient.getQueryData(queryKey);
+
+      queryClient.setQueryData(queryKey, (old) => ({
+        ...old,
+        products: old.products.map((p) =>
+          p.id === id
+            ? { ...p, discount_active: discountActive ? 1 : 0 }
+            : p
+        ),
+      }));
+
+      return { previous };
+    },
+
+    // ❌ Rollback
+    onError: (err, _, context) => {
+      console.error("[RQ] ❌ Discount toggle failed:", err);
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      alert(err.message);
+    },
+
+    // ✅ Sync with server
+    onSuccess: () => {
+      console.log("[RQ] ✅ Discount status updated");
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  const setDiscountPercentMutation = useMutation({
+    mutationFn: async ({ id, percent }) => {
+      const url = `/api/admin/manage_products/${id}`;
+      console.log("[Axios] Calling:", url);
+
+      const { data } = await axios.put(url, {
+        discount_percent: percent,
+      });
+
+      if (!data?.success) {
+        throw new Error("Failed to set discount percent");
+      }
+
+      return data;
+    },
+
+    onMutate: async ({ id, percent }) => {
+      await queryClient.cancelQueries({ queryKey });
+
+      const previous = queryClient.getQueryData(queryKey);
+
+      queryClient.setQueryData(queryKey, (old) => ({
+        ...old,
+        products: old.products.map((p) =>
+          p.id === id ? { ...p, discount_percent: percent } : p
+        ),
+      }));
+
+      return { previous };
+    },
+
+    onError: (err, _, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(queryKey, ctx.previous);
+      alert(err.message);
+    },
+
+    onSuccess: () => {
+      //queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+
 
   // ────────────────────────────────
   // Bulk Update / Delete (Axios)
@@ -333,6 +431,8 @@ export default function ProductList({ searchQuery, sortOrder }) {
         }
         onToggleRow={toggleRow}
         toggleActiveMutation={toggleActiveMutation.mutate}  // ✅ pass mutate directly
+        toggleDiscountMutation={toggleDiscountMutation}
+        setDiscountPercentMutation={setDiscountPercentMutation}    
       />
 
       <BulkUpdateModal

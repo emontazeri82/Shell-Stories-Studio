@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    await rateLimiter(req, res, () => {}, { limit: 120, window: 60 });
+    await rateLimiter(req, res, () => { }, { limit: 120, window: 60 });
 
     const id = Number(req.query.id);
     if (!Number.isFinite(id) || id <= 0) {
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     // NOTE: removed updated_at from the select
     const product = await db.get(
       `SELECT id, name, description, price, stock, image_url, image_public_id,
-              category, is_active, is_favorite, created_at
+              category, discount_percent, discount_active, is_active, is_favorite, created_at
          FROM products
         WHERE id = ? AND is_active = 1`,
       id
@@ -72,6 +72,9 @@ export default async function handler(req, res) {
       description: product.description,
       price: toNum(product.price) ?? 0,
       stock: toNum(product.stock),
+      discount_percent: Number(product.discount_percent || 0),
+      discount_active: Number(product.discount_active || 0),
+      
       image_url: product.image_url,
       image_public_id: product.image_public_id || null,
       category: product.category,

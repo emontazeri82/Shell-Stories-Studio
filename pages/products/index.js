@@ -54,22 +54,46 @@ export default function ProductsPage({ products }) {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-center mb-8 font-poppins">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1
+          className="
+            text-2xl
+            sm:text-3xl
+            lg:text-4xl
+            font-bold
+            text-center
+            mb-8
+            font-poppins
+          "
+        >
           Our Shell Collection
         </h1>
         {/* ⭐ LUXURY STORY SECTION (PLACE IT HERE) */}
         <div className="max-w-2xl mx-auto text-center mb-12">
-          <h2 className="font-playfair text-4xl tracking-tight mb-4">
+          <h2
+            className="
+              font-playfair
+              text-2xl
+              sm:text-3xl
+              lg:text-4xl
+              tracking-tight
+              mb-4
+            "
+          >
             Crafted by Nature, Refined by Hand
           </h2>
-
           <p className="text-zinc-600 max-w-xl mx-auto">
             Each shell is selected, polished, and transformed into a timeless art piece.
             Explore our curated luxury collection built with care and craftsmanship.
           </p>
         </div>
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+        <div className="
+          grid gap-6
+          grid-cols-1
+          sm:grid-cols-2
+          lg:grid-cols-3
+          xl:grid-cols-4
+        ">
           {products.map((product) => (
             <ProductFavorite
               key={product.id}

@@ -67,6 +67,8 @@ export default async function handler(req, res) {
       SELECT
         p.id, p.name, p.description, p.price, p.stock,
         p.image_url, p.image_public_id, p.category,
+        p.discount_percent,
+        p.discount_active,
         p.is_active, p.is_favorite, p.created_at, p.updated_at,
         pm.secure_url AS primary_media_url,
         pm.kind       AS primary_media_kind,
@@ -94,7 +96,9 @@ export default async function handler(req, res) {
       description: p.description,
       price: Number(p.price),
       stock: Number.isFinite(Number(p.stock)) ? Number(p.stock) : null,
-
+      
+      discount_percent: Number(p.discount_percent || 0),
+      discount_active: Number(p.discount_active || 0),
       // ✅ Fallback to primary media so cards always get an image
       image_url: p.image_url || p.primary_media_url || null,
       image_public_id: p.image_public_id || p.primary_media_public_id || null,

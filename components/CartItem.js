@@ -18,9 +18,25 @@ function CartItem({ item }) {
   const product = useSelector((s) =>
     s.products?.items?.find((p) => p.id === item.id)
   );
-
+  // 🔎 DEBUG: check Redux product availability
+  console.log("🛒 CartItem debug", {
+    cartItemId: item.id,
+    productFromRedux: product,
+    //productsCount: products?.length,
+  });
   const name = product?.name ?? item.name;
   const price = Number(product?.price ?? item.price ?? 0);
+
+  const discountActive = Number(product?.discount_active) === 1;
+  const discountPercent = Number(product?.discount_percent || 0);
+
+  const hasDiscount = discountActive && discountPercent > 0;
+
+  const basePrice = price;
+
+  const discountedPrice = hasDiscount
+    ? basePrice - (basePrice * discountPercent) / 100
+    : null;
 
   const stockNum = Number(product?.stock ?? item.stock ?? Infinity);
   const hasStockCap = Number.isFinite(stockNum);
@@ -77,7 +93,7 @@ function CartItem({ item }) {
 
       {/* MAIN CONTENT */}
       <div className="flex-1 min-w-0 flex flex-col justify-center">
-        
+
         {/* NAME */}
         <h2 className="text-lg font-playfair text-gray-900 dark:text-gray-100 max-w-full">
           {name}
@@ -98,9 +114,22 @@ function CartItem({ item }) {
         )}
 
         {/* PRICE */}
-        <p className="mt-2 font-semibold text-gray-800 dark:text-gray-200">
-          ${price.toFixed(2)}
-        </p>
+        <div className="flex flex-col items-end">
+          {hasDiscount ? (
+            <>
+              <span className="text-sm text-gray-400 line-through">
+                ${basePrice.toFixed(2)}
+              </span>
+              <span className="text-base font-semibold text-indigo-700 dark:text-indigo-300">
+                ${discountedPrice.toFixed(2)}
+              </span>
+            </>
+          ) : (
+            <span className="text-base font-semibold">
+              ${basePrice.toFixed(2)}
+            </span>
+          )}
+        </div>
 
         {/* QTY + STOCK */}
         <div className="flex items-center gap-4 mt-3">

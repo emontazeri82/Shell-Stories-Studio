@@ -10,10 +10,18 @@ const initialState = {
 
 // Helper: always keep total correct in one place
 const recalcTotal = (state) => {
-  state.total = state.items.reduce(
-    (sum, i) => sum + Number(i.price || 0) * Number(i.quantity || 0),
-    0
-  );
+  state.total = state.items.reduce((sum, item) => {
+    const basePrice = Number(item.price || 0);
+    const hasDiscount =
+      Number(item.discount_active) === 1 &&
+      Number(item.discount_percent) > 0;
+
+    const unitPrice = hasDiscount
+      ? basePrice - (basePrice * item.discount_percent) / 100
+      : basePrice;
+
+    return sum + unitPrice * Number(item.quantity || 0);
+  }, 0);
 };
 
 const cartSlice = createSlice({
@@ -40,6 +48,8 @@ const cartSlice = createSlice({
           id: payload.id,
           name: payload.name,
           price: Number(payload.price || 0),
+          discount_active: payload.discount_active,
+          discount_percent: payload.discount_percent,
           image_url: payload.image_url,
           quantity: Math.min(qty, max),
           stock: incomingStock, // persist stock on the line
@@ -99,8 +109,10 @@ const cartSlice = createSlice({
       state.items = next.map(i => ({
         ...i,
         price: Number(i.price || 0),
+        discount_active: Number(i.discount_active || 0),
+        discount_percent: Number(i.discount_percent || 0),
         quantity: Math.max(1, Number(i.quantity || 1)),
-      }));
+      }));      
       recalcTotal(state);
     },
   },

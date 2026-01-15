@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       if (!item?.id) continue;
 
       const product = await db.get(
-        `SELECT id, name, price, stock, is_active, image_url, description
+        `SELECT id, name, price, stock, is_active, image_url, description, discount_active, discount_percent
          FROM products
          WHERE id = ?`,
         [item.id]
@@ -43,6 +43,10 @@ export default async function handler(req, res) {
         id: product.id,
         name: product.name,
         price: Number(product.price),
+        // ✅ KEEP DISCOUNT
+        discount_active: Number(product.discount_active || 0),
+        discount_percent: Number(product.discount_percent || 0),
+        
         quantity,
         stock: product.stock,
         image_url: product.image_url,      // 🔥 must include

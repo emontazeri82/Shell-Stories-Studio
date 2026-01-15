@@ -16,6 +16,8 @@ const toInt = (v, def = 0) => {
   return Number.isFinite(n) ? n : def;
 };
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const toBool = (v) => Number(v) === 1;
+
 const parseIdList = (s) => {
   if (!s || typeof s !== "string") return [];
   const seen = new Set();
@@ -28,7 +30,7 @@ const parseIdList = (s) => {
 };
 
 // ─────────────────────────────────────────────
-// ENHANCED SERVER DEBUGGING LOG HELPERS
+// Debug logging
 // ─────────────────────────────────────────────
 const DEBUG = true;
 function log(...args) {
@@ -43,14 +45,12 @@ export default async function handler(req, res) {
 
   res.setHeader("Cache-Control", "no-store");
 
-  // Log incoming request
   log("➡️ Incoming request:", req.query);
 
   let db;
   try {
     db = await openDB();
 
-    // Parse + sanitize inputs
     const limit = clamp(toInt(req.query.limit, DEFAULT_LIMIT), 1, MAX_LIMIT);
     const offset = clamp(toInt(req.query.offset, 0), 0, MAX_OFFSET);
     const isRandom = req.query.random === "1";
@@ -59,10 +59,26 @@ export default async function handler(req, res) {
 
     const orderExpr = isRandom ? "RANDOM()" : "created_at DESC, id DESC";
     const notInSql =
-      exclude.length > 0 ? ` AND id NOT IN (${exclude.map(() => "?").join(",")})` : "";
+      exclude.length > 0
+        ? ` AND id NOT IN (${exclude.map(() => "?").join(",")})`
+        : "";
 
+    // ✅ FIX: include discount fields
     const sql = `
-      SELECT id, name, description, price, stock, image_url, category
+      SELECT
+        id,
+        name,
+        description,
+        price,
+        stock,
+        image_url,
+        image_public_id,
+        category,
+        discount_percent,
+        discount_active,
+        is_active,
+        is_favorite,
+        created_at
       FROM products
       WHERE is_active = 1
         AND is_favorite = 1
@@ -74,24 +90,39 @@ export default async function handler(req, res) {
 
     const params = [minStock, ...exclude, limit, offset];
 
-    // ─────────────────────────────────────────────
-    // Log parsed inputs + final SQL + params
-    // ─────────────────────────────────────────────
-    log("Parsed Inputs:", {
-      limit,
-      offset,
-      isRandom,
-      minStock,
-      exclude,
-    });
-
     log("Final SQL:", sql.replace(/\s+/g, " ").trim());
     log("SQL Params:", params);
 
-    const items = await db.all(sql, params);
+    const rows = await db.all(sql, params);
+    log("⬅️ Query success — count:", rows.length);
 
-    // Log results
-    log("⬅️ Query success — count:", items.length);
+    // ✅ Normalize output (VERY IMPORTANT)
+    const items = rows.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      price: Number(p.price),
+      stock: Number(p.stock),
+
+      // 🔥 DISCOUNT FIELDS (NOW PRESENT)
+      discount_percent: Number(p.discount_percent || 0),
+      discount_active: Number(p.discount_active || 0),
+
+      image_url: p.image_url,
+      image_public_id: p.image_public_id,
+      category: p.category,
+
+      is_active: toBool(p.is_active),
+      is_favorite: toBool(p.is_favorite),
+      created_at: p.created_at,
+    }));
+
+    // 🔎 Debug check
+    items.forEach((p) =>
+      log(
+        `✔️ Product ${p.id}: discount_active=${p.discount_active}, discount_percent=${p.discount_percent}`
+      )
+    );
 
     return res.status(200).json({ items });
   } catch (e) {

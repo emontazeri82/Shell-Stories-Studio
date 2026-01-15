@@ -7,7 +7,7 @@ import OrderCard from './OrderCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
 
-export default function AdminOrdersPanel({ initialOrders = []}) {
+export default function AdminOrdersPanel({ initialOrders = [] }) {
     const [orders, setOrders] = useState(initialOrders);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -24,7 +24,7 @@ export default function AdminOrdersPanel({ initialOrders = []}) {
             setFilteredOrders(initialOrders);
             setLoading(false);
             return; // IMPORTANT
-        }    
+        }
 
         const fetchOrders = async () => {
             try {
@@ -66,7 +66,7 @@ export default function AdminOrdersPanel({ initialOrders = []}) {
     if (loading) return <p className="p-4">Loading orders...</p>;
 
     return (
-        <div className="font-inter p-6 max-w-6xl mx-auto">
+        <div className="font-inter px-6 py-6 w-full max-w-[1600px] mx-auto">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold font-title">Admin Orders Panel</h1>
                 <SearchBar search={search} setSearch={setSearch} />

@@ -23,15 +23,35 @@ handler.get(async (req, res) => {
     // 1️⃣ Get the base order list (kept EXACTLY like your version)
     const rawOrders = await db.all(`
       SELECT 
-        o.*, 
+        o.*,
+    
+        -- shipping_details
         s.tracking_number,
         s.shipping_status,
         s.shipped_at,
-        s.delivered_at
+        s.delivered_at,
+    
+        -- order_shipping_addresses
+        osa.name        AS shipping_name,
+        osa.phone       AS shipping_phone,
+        osa.address_1,
+        osa.address_2,
+        osa.city,
+        osa.state,
+        osa.postal_code,
+        osa.country,
+        osa.source      AS shipping_source
+    
       FROM orders o
-      LEFT JOIN shipping_details s ON s.order_id = o.id
+      LEFT JOIN shipping_details s 
+        ON s.order_id = o.id
+    
+      LEFT JOIN order_shipping_addresses osa
+        ON osa.order_id = o.id
+    
       ORDER BY o.created_at DESC
     `);
+
 
     // 2️⃣ Fetch all order items WITH product info (added feature)
     const itemRows = await db.all(`

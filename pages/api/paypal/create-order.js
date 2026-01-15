@@ -20,7 +20,8 @@ export default async function handler(req, res) {
     const { total: clientTotal, items, sessionId, deliveryMethod = "standard" } = req.body;
 
     console.log("📩 Incoming Body:", req.body);
-
+    const safeDeliveryMethod =
+      deliveryMethod === "pickup" ? "pickup" : "standard";
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "Invalid items" });
     }
@@ -64,7 +65,7 @@ export default async function handler(req, res) {
     // ---------------------------------------------------------
     // 🔒 1. SERVER-SIDE TOTALS (fraud-safe)
     // ---------------------------------------------------------
-    const serverTotals = calcTotals(items, deliveryMethod);
+    const serverTotals = calcTotals(items, safeDeliveryMethod);
 
     console.log("🧮 Server Totals (authoritative):", serverTotals);
     console.log("⚠️ Client Total:", clientTotal);
@@ -73,11 +74,7 @@ export default async function handler(req, res) {
     if (Number(clientTotal).toFixed(2) !== Number(serverTotals.total).toFixed(2)) {
       console.warn("🚨 Total mismatch detected! Client vs Server");
       return res.status(400).json({
-        error: "Price validation failed",
-        details: {
-          clientTotal,
-          serverTotal: serverTotals.total
-        }
+        error: "Price validation failed. Please refresh checkout."
       });
     }
 
@@ -89,7 +86,7 @@ export default async function handler(req, res) {
     // 🚚 Shipping preference
     // ---------------------------------------------------------
     const shippingPreference =
-      deliveryMethod === "pickup" ? "NO_SHIPPING" : "GET_FROM_FILE";
+      safeDeliveryMethod === "pickup" ? "NO_SHIPPING" : "GET_FROM_FILE";
 
     // ---------------------------------------------------------
     // 💳 Create PayPal Order
@@ -101,6 +98,10 @@ export default async function handler(req, res) {
       intent: "CAPTURE",
       purchase_units: [
         {
+          custom_id: JSON.stringify({
+            sessionId,
+            deliveryMethod: safeDeliveryMethod
+          }),
           amount: {
             currency_code: "USD",
             value: totalWithFees,
@@ -145,6 +146,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("❌ PayPal Order Creation Error:", error);
+
     return res.status(500).json({ error: "Failed to create PayPal order" });
   }
 }

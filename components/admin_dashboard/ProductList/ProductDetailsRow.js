@@ -27,6 +27,12 @@ export default function ProductDetailsRow({ product }) {
           <strong>Description:</strong>{" "}
           {product.description || "No description provided."}
         </p>
+        {/* 💸 Discount Info */}
+        {Number(product.discount_active) === 1 && (
+          <p className="mt-2 text-sm text-red-600 font-semibold">
+            Discount Price: ${product.discount_price}
+          </p>
+        )}
 
         {/* 🖼 Media Gallery */}
         <div className="mt-3">
@@ -49,11 +55,10 @@ export default function ProductDetailsRow({ product }) {
                       controls
                       muted
                       playsInline
-                      className={`h-24 w-32 border rounded-md object-cover ${
-                        isPrimary
+                      className={`h-24 w-32 border rounded-md object-cover ${isPrimary
                           ? "border-2 border-blue-500"
                           : "border border-gray-300"
-                      }`}
+                        }`}
                     />
                   );
                 }
@@ -63,11 +68,10 @@ export default function ProductDetailsRow({ product }) {
                     key={m.public_id || idx}
                     src={url}
                     alt={m.public_id || product.name || "media"}
-                    className={`h-24 w-24 object-cover rounded-md ${
-                      isPrimary
+                    className={`h-24 w-24 object-cover rounded-md ${isPrimary
                         ? "border-2 border-blue-500"
                         : "border border-gray-300"
-                    }`}
+                      }`}
                   />
                 );
               })

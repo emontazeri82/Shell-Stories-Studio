@@ -18,6 +18,7 @@ import {
 import { getRedisClient } from "@/lib/redis";
 import { safeRedisKey } from "@/lib/redis/formatkey";
 import { sanitizeProductFields } from "@/lib/utils/sanitizeProductFields";
+import { sanitizeProductPatch } from "@/lib/utils/sanitizeProductPatch";
 import { getProductWithMediaById } from "@/lib/db"; // ✅ added
 // remove unused media imports
 import { deleteCloudinaryAssets } from "@/lib/cloudinaryCleanup";
@@ -34,7 +35,6 @@ const asNumber = (v) => {
   return Number.isFinite(n) ? n : NaN;
 };
 const asTinyint = (v) => (Number(v) === 1 || v === true ? 1 : 0);
-
 // --------------------------------------------------
 // 🔄 Utility: Invalidate Redis product cache
 // --------------------------------------------------
@@ -106,16 +106,28 @@ handler.put(async (req, res) => {
     if ("category" in input) patch.category = String(input.category || "decor");
     if ("is_active" in input) patch.is_active = asTinyint(input.is_active);
     if ("is_favorite" in input) patch.is_favorite = asTinyint(input.is_favorite);
+    // ✅ discount
+    if ("discount_percent" in input)
+      patch.discount_percent = asInt(input.discount_percent);
+    if ("discount_active" in input)
+      patch.discount_active = asTinyint(input.discount_active);
 
-    const sanitized = sanitizeProductFields
-      ? sanitizeProductFields(patch)
-      : patch;
+    const sanitized = sanitizeProductPatch(patch);
 
     if (!Object.keys(sanitized).length)
       return sendErrorResponse(res, 400, "Nothing to update");
 
-    const validationError = validateProductData(sanitized);
-    if (validationError) return sendErrorResponse(res, 400, validationError);
+    // ✅ Only validate full product updates (not partial PATCH-like PUTs)
+    if ("name" in sanitized || "price" in sanitized || "category" in sanitized) {
+      const validationError = validateProductData({
+        ...current,
+        ...sanitized,
+      });
+
+      if (validationError) {
+        return sendErrorResponse(res, 400, validationError);
+      }
+    }
 
     const result = await updateProductById(idNum, sanitized);
     if (!result || result.changes === 0)
@@ -213,8 +225,24 @@ handler.patch(async (req, res) => {
   const idNum = asInt(req.query.id);
   if (!isPosInt(idNum)) return sendErrorResponse(res, 400, "Invalid id");
 
-  const { is_active, isActive } = req.body ?? {};
-  const toggle = Number(is_active ?? isActive);
+  const {
+    is_active,
+    isActive,
+    discount_active,
+    discountActive,
+  } = req.body ?? {};
+
+  const field =
+    discount_active !== undefined || discountActive !== undefined
+      ? "discount_active"
+      : "is_active";
+
+  const toggle = Number(
+    field === "discount_active"
+      ? discount_active ?? discountActive
+      : is_active ?? isActive
+  );
+
 
   if (!Number.isFinite(toggle)) {
     console.warn("⚠️ Invalid PATCH body:", req.body);
@@ -222,7 +250,14 @@ handler.patch(async (req, res) => {
   }
 
   try {
-    await updateProductStatus(idNum, asTinyint(toggle));
+    if (field === "discount_active") {
+      await updateProductById(idNum, {
+        discount_active: asTinyint(toggle),
+      });
+    } else {
+      await updateProductStatus(idNum, asTinyint(toggle));
+    }
+
     await invalidateProductsCache();
 
     return sendSuccessResponse(res, 200, "Status updated", { success: true });

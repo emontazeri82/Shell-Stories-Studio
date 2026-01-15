@@ -80,6 +80,14 @@ export default function CheckoutForm({
       isFormValid: freshIsValid,
     });
   }
+  // 🟢 Re-validate automatically when saved data loads
+  useEffect(() => {
+    if (!email || !deliveryMethod) return;
+
+    updateParent(deliveryMethod, email, phone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email, phone, deliveryMethod]);
+
 
   return (
     <div className="relative">
