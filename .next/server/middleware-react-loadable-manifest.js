@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"pages/cart/index.js -> @/components/favorites/FavoritesRail\":{\"id\":\"pages/cart/index.js -> @/components/favorites/FavoritesRail\",\"files\":[\"static/chunks/_pages-dir-browser_components_favorites_FavoritesRail_js.js\"]}}"
