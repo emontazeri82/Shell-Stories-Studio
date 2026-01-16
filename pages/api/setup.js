@@ -180,18 +180,26 @@ async function createTables(db) {
 
 
 async function populateRoles(db) {
-  const hashedPassword = await argon2.hash("ghazalgxz123");
+  const email = process.env.ADMIN_SEED_EMAIL;
+  const password = process.env.ADMIN_SEED_PASSWORD;
+
+  if (!email || !password) {
+    throw new Error("Admin seed credentials missing");
+  }
+
+  const hashedPassword = await argon2.hash(password);
+
   await db.run(
     `INSERT OR IGNORE INTO users (email, name, password_hash, role)
      VALUES (?, ?, ?, ?)`,
-    ["ghazal.montazeri@gmail.com", "Ghazal", hashedPassword, "admin"]
+    [email, "Ghazal", hashedPassword, "admin"]
   );
 }
 
 export default async function handler(req, res) {
-  if (process.env.NODE_ENV !== "development") {
-    return res.status(403).json({ error: "Not allowed" });
-  }
+  if (process.env.NODE_ENV !== "development" || process.env.ALLOW_DB_SEED !== "true") {
+    return res.status(403).json({ error: "Seeding disabled" });
+  }  
 
   try {
     const db = await openDB();
