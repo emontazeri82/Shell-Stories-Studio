@@ -187,7 +187,7 @@ export default function ProductTable({
                       className={`w-28 py-1 px-3 text-sm rounded ${product.discount_active ? "bg-red-600" : "bg-gray-500"
                         } text-white`}
                       onClick={() => {
-                        toggleDiscountMutation({
+                        toggleDiscountMutation.mutate({
                           id: product.id,
                           discountActive: product.discount_active ? 0 : 1,
                         });

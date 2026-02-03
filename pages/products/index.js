@@ -54,9 +54,11 @@ export default function ProductsPage({ products }) {
 
   return (
     <Layout>
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1
-          className="
+      <div className="min-h-screen bg-stone-50 dark:bg-zinc-950 text-zonc-900 dark:text-zinc-100">
+
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1
+            className="
             text-2xl
             sm:text-3xl
             lg:text-4xl
@@ -64,14 +66,16 @@ export default function ProductsPage({ products }) {
             text-center
             mb-8
             font-poppins
+            text-zinc-900
+            dark:text-zinc-100
           "
-        >
-          Our Shell Collection
-        </h1>
-        {/* ⭐ LUXURY STORY SECTION (PLACE IT HERE) */}
-        <div className="max-w-2xl mx-auto text-center mb-12">
-          <h2
-            className="
+          >
+            Our Shell Collection
+          </h1>
+          {/* ⭐ LUXURY STORY SECTION (PLACE IT HERE) */}
+          <div className="max-w-2xl mx-auto text-center mb-12">
+            <h2
+              className="
               font-playfair
               text-2xl
               sm:text-3xl
@@ -79,35 +83,36 @@ export default function ProductsPage({ products }) {
               tracking-tight
               mb-4
             "
-          >
-            Crafted by Nature, Refined by Hand
-          </h2>
-          <p className="text-zinc-600 max-w-xl mx-auto">
-            Each shell is selected, polished, and transformed into a timeless art piece.
-            Explore our curated luxury collection built with care and craftsmanship.
-          </p>
-        </div>
-        <div className="
+            >
+              Crafted by Nature, Refined by Hand
+            </h2>
+            <p className="text-zinc-600 max-w-xl mx-auto">
+              Each shell is selected, polished, and transformed into a timeless art piece.
+              Explore our curated luxury collection built with care and craftsmanship.
+            </p>
+          </div>
+          <div className="
           grid gap-6
           grid-cols-1
           sm:grid-cols-2
           lg:grid-cols-3
           xl:grid-cols-4
         ">
-          {products.map((product) => (
-            <ProductFavorite
-              key={product.id}
-              product={product}
-              onClick={() => handleProductClick(product)}
-              isHighlighted={highlightedId === product.id}
-              fromCenter={highlightedId === product.id && highlightFromCenter}
-            />
-          ))}
-        </div>
+            {products.map((product) => (
+              <ProductFavorite
+                key={product.id}
+                product={product}
+                onClick={() => handleProductClick(product)}
+                isHighlighted={highlightedId === product.id}
+                fromCenter={highlightedId === product.id && highlightFromCenter}
+              />
+            ))}
+          </div>
 
-        {selectedProduct && (
-          <ProductCard product={selectedProduct} onClose={handleCloseModal} />
-        )}
+          {selectedProduct && (
+            <ProductCard product={selectedProduct} onClose={handleCloseModal} />
+          )}
+        </div>
       </div>
     </Layout>
   );

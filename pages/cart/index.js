@@ -132,7 +132,12 @@ export default function CartPage() {
         <title>Your Cart — Shell Stories Studio</title>
       </Head>
 
-      <main className="relative min-h-screen bg-gradient-to-b from-stone-50 via-amber-50/30 to-white">
+      <main className="
+        relative min-h-screen
+        bg-gradient-to-b
+        from-stone-50 via-amber-50/30 to-white
+        dark:from-zinc-950 dark:via-zinc-900/60 dark:to-zinc-950
+      ">
         {/* ambient gradient glow */}
         <div className="pointer-events-none absolute inset-x-0 -top-40 h-[380px] bg-gradient-to-b from-indigo-500/25 via-fuchsia-500/15 to-transparent blur-3xl" />
         {/* Editorial vignette */}
